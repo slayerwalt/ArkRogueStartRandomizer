@@ -5,7 +5,7 @@ import RecruitSlots from './components/RecruitSlots.vue';
 import SettingsPanel from './components/SettingsPanel.vue';
 import SquadCard from './components/SquadCard.vue';
 import { validateGameData } from './lib/data';
-import { rerollSlot, rerollSquad, rollStart } from './lib/roll';
+import { rerollSlot, rerollSquad, rollSlotsFor, rollStart } from './lib/roll';
 import { DEFAULT_SETTINGS, loadSettings, saveSettings } from './lib/settings';
 import type { GameData, RollResult, RollSettings } from './lib/types';
 
@@ -20,7 +20,7 @@ try {
 const theme = data?.themes[0] ?? null;
 const operators = data?.operators ?? [];
 
-const settings = ref<RollSettings>({ ...DEFAULT_SETTINGS, rarities: [...DEFAULT_SETTINGS.rarities], excludes: [] });
+const settings = ref<RollSettings>({ ...DEFAULT_SETTINGS, excludes: [] });
 const pruneNotice = ref('');
 if (data) {
   const loaded = loadSettings(window.localStorage, new Set(operators.map((o) => o.id)));
@@ -41,14 +41,18 @@ function roll() {
 
 function onRerollSquad() {
   if (!theme || !result.value) return;
-  result.value = { ...result.value, squad: rerollSquad(theme) };
+  const squad = rerollSquad(theme);
+  // 重摇分队后减免与预算改变，所有券位重新随机（组合保持不变）
+  result.value = rollSlotsFor(operators, settings.value, squad, result.value.group);
 }
 
 function onRerollSlot(index: number) {
   if (!result.value) return;
-  const slots = result.value.slots.slice();
-  slots[index] = rerollSlot(slots[index].slot, operators, settings.value);
-  result.value = { ...result.value, slots };
+  const { slots, squad, initialHope } = result.value;
+  const budget = initialHope - slots.reduce((sum, s, i) => (i === index ? sum : sum + s.hopeCost), 0);
+  const newSlots = slots.slice();
+  newSlots[index] = rerollSlot(newSlots[index].slot, operators, settings.value, squad, budget);
+  result.value = { ...result.value, slots: newSlots };
 }
 </script>
 
@@ -62,6 +66,10 @@ function onRerollSlot(index: number) {
     <p v-if="pruneNotice" class="notice">{{ pruneNotice }}</p>
     <button class="roll-button" @click="roll">🎲 开始随机</button>
     <template v-if="result">
+      <div class="hope-bar">
+        初始希望 <strong>{{ result.initialHope }}</strong>，本局消耗
+        <strong>{{ result.slots.reduce((s, sl) => s + sl.hopeCost, 0) }}</strong>
+      </div>
       <SquadCard :squad="result.squad" @reroll="onRerollSquad" />
       <RecruitSlots
         :group="result.group"

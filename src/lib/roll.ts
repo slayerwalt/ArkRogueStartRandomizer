@@ -1,4 +1,4 @@
-import type { Operator, RecruitSlot, RollResult, RollSettings, SlotResult, Squad, Theme } from './types';
+import type { Operator, RecruitGroup, RecruitSlot, RollResult, RollSettings, SlotResult, Squad, Theme } from './types';
 
 export type Rng = () => number;
 
@@ -75,8 +75,18 @@ export function rollStart(
 ): RollResult {
   const squad = pickOne(theme.squads, rng);
   const group = pickOne(theme.recruitGroups, rng);
+  return rollSlotsFor(operators, settings, squad, group, rng);
+}
+
+/** 给定分队与组合，随机打乱券位顺序并按「尽量高星 + 硬约束」随机所有券位 */
+export function rollSlotsFor(
+  operators: readonly Operator[],
+  settings: RollSettings,
+  squad: Squad,
+  group: RecruitGroup,
+  rng: Rng = Math.random,
+): RollResult {
   const initialHope = BASE_HOPE + squad.initialHopeBonus;
-  // 随机打乱券位顺序，高星干员不固定出现在某个券位
   const order = shuffle(group.slots.map((_, i) => i), rng);
   const results = new Array<SlotResult>(group.slots.length);
   let remaining = initialHope;

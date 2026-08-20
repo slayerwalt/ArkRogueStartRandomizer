@@ -33,10 +33,11 @@ function slotLabel(slot: SlotResult['slot']): string {
           >↻</button>
         </div>
         <template v-if="withOperators">
-          <div v-if="s.empty" class="slot-empty">池子已空，请放宽筛选</div>
+          <div v-if="s.empty" class="slot-empty">无可选干员，请调整排除名单</div>
           <div v-else-if="s.operator" class="slot-operator">
             {{ s.operator.name }}
             <span class="stars">{{ '★'.repeat(s.operator.rarity) }}</span>
+            <span class="hope">{{ s.hopeCost }}希望</span>
           </div>
         </template>
       </div>
