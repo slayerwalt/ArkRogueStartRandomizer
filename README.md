@@ -1,0 +1,26 @@
+# 黑流树海开局随机器
+
+明日方舟集成战略「沉沦者的黑流树海」开局随机器：随机开局分队和招募组合，可选随机每个券位的具体干员。
+
+## 使用
+
+```bash
+npm install
+npm run dev        # 开发预览
+npm run build      # 构建静态产物到 dist/
+```
+
+## 更新游戏数据
+
+数据已打包在 `src/data/rogue-data.json`。游戏版本更新后重新生成：
+
+```bash
+git clone --depth 1 https://github.com/yuanyan3060/ArknightsGameResource.git
+npm run extract -- <ArknightsGameResource 仓库路径>
+```
+
+## 测试
+
+```bash
+npm test
+```
