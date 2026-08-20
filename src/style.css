@@ -328,8 +328,7 @@ input[type='checkbox'] {
   color: var(--hope);
 }
 
-.pool-select,
-.rarity-select {
+.pool-select {
   background: var(--panel-deep);
   color: var(--ink);
   border: 1px solid var(--panel-edge);
@@ -654,21 +653,6 @@ input[type='checkbox'] {
   transform: scale(0.98);
 }
 
-.accept-button {
-  background: linear-gradient(160deg, #1e5c46, #143a2d);
-  color: #a8f0cd;
-  box-shadow: inset 0 0 0 1px rgba(90, 220, 160, 0.35);
-}
-
-.accept-button:hover:not(:disabled) {
-  filter: brightness(1.2);
-}
-
-.accept-button:disabled {
-  opacity: 0.55;
-  cursor: default;
-}
-
 .reroll-all-button {
   background: linear-gradient(160deg, #2b2416, #1c1810);
   color: var(--hope);
@@ -677,100 +661,6 @@ input[type='checkbox'] {
 
 .reroll-all-button:hover {
   filter: brightness(1.25);
-}
-
-/* ===== 排行榜 ===== */
-.boards {
-  display: flex;
-  gap: 10px;
-  margin-top: 10px;
-}
-
-.board {
-  flex: 1;
-  min-width: 0;
-  background: var(--panel-deep);
-  border: 1px solid rgba(53, 224, 196, 0.08);
-  border-radius: 4px;
-  padding: 10px;
-}
-
-.board-title {
-  font-size: 13px;
-  text-align: center;
-  margin-bottom: 6px;
-  font-weight: bold;
-  letter-spacing: 1px;
-}
-
-.board-title.accept {
-  color: #a8f0cd;
-}
-
-.board-title.abandon {
-  color: var(--danger);
-}
-
-.board-list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-}
-
-.board-list li {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 3px 2px;
-  font-size: 14px;
-}
-
-.board-rank {
-  color: var(--ink-faint);
-  font-size: 12px;
-  width: 14px;
-  flex-shrink: 0;
-}
-
-.board-list li:nth-child(-n + 3) .board-rank {
-  color: var(--hope);
-  font-weight: bold;
-}
-
-.board-avatar {
-  width: 24px;
-  height: 24px;
-  object-fit: cover;
-  border-radius: 50%;
-  border: 1px solid var(--panel-edge-strong);
-  background: #050908;
-  flex-shrink: 0;
-}
-
-.board-name {
-  flex: 1;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.board-count {
-  color: var(--hope);
-  font-weight: bold;
-}
-
-.board-empty {
-  color: var(--ink-faint);
-  font-size: 13px;
-  text-align: center;
-  padding: 8px 0;
-}
-
-.board-total {
-  margin-top: 8px;
-  color: var(--ink-faint);
-  font-size: 12px;
-  text-align: right;
 }
 
 /* ===== 登场动画 ===== */
