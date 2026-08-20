@@ -45,18 +45,16 @@ const SQUAD_DISCOUNT = {
 
 // 招募组合 → 券位配置。游戏数据中不存在该关联（客户端逻辑），
 // 根据组合描述文本核对：固定券位组合 1-5 的职业中文名必须出现在 desc 中；
-// recruit_group_random 为「随心所欲」：5星临时招募券 + 地面四职业券 + 高台四职业券。
+// recruit_group_random（随心所欲）在游戏内随机发券，本地无法复现，不纳入随机组合。
+// 提取时需要排除的招募组合（券位在游戏内随机，本地无法复现）
+export const EXCLUDED_RECRUIT_GROUPS = ['recruit_group_random'];
+
 export const GROUP_SLOTS = {
   recruit_group_1: [{ classes: ['PIONEER'] }, { classes: ['SNIPER'] }, { classes: ['SPECIAL'] }],
   recruit_group_2: [{ classes: ['TANK'] }, { classes: ['CASTER'] }, { classes: ['SNIPER'] }],
   recruit_group_3: [{ classes: ['WARRIOR'] }, { classes: ['SUPPORT'] }, { classes: ['MEDIC'] }],
   recruit_group_4: [{ classes: ['PIONEER'] }, { classes: ['SUPPORT'] }, { classes: ['SPECIAL'] }],
   recruit_group_5: [{ classes: ['TANK'] }, { classes: ['CASTER'] }, { classes: ['MEDIC'] }],
-  recruit_group_random: [
-    { classes: ALL_CLASSES, rarityCap: 5 },
-    { classes: ['PIONEER', 'WARRIOR', 'TANK', 'SPECIAL'] },
-    { classes: ['SNIPER', 'CASTER', 'MEDIC', 'SUPPORT'] },
-  ],
 };
 
 export function extractSquads(topicDetail) {
@@ -81,7 +79,9 @@ export function extractSquads(topicDetail) {
 export function extractRecruitGroups(topicDetail) {
   const initEntry = topicDetail.init.find((e) => e.modeGrade === 0);
   if (!initEntry) throw new Error('找不到 modeGrade=0 的开局配置');
-  return initEntry.initialRecruitGroup.map((gid) => {
+  return initEntry.initialRecruitGroup
+    .filter((gid) => !EXCLUDED_RECRUIT_GROUPS.includes(gid))
+    .map((gid) => {
     const grp = topicDetail.recruitGrps[gid];
     if (!grp) throw new Error(`招募组合 ${gid} 缺少 recruitGrps 数据`);
     const slots = GROUP_SLOTS[gid];

@@ -60,17 +60,15 @@ describe('extractSquads', () => {
 });
 
 describe('extractRecruitGroups', () => {
-  it('从 modeGrade=0 的开局组合提取券位配置', () => {
+  it('从 modeGrade=0 的开局组合提取券位配置，排除随心所欲', () => {
     const groups = extractRecruitGroups(fakeTopicDetail);
-    expect(groups).toHaveLength(2);
+    expect(groups).toHaveLength(1);
     expect(groups[0].name).toBe('先手必胜');
     expect(groups[0].slots).toEqual([
       { classes: ['PIONEER'], rarityCap: null },
       { classes: ['SNIPER'], rarityCap: null },
       { classes: ['SPECIAL'], rarityCap: null },
     ]);
-    expect(groups[1].slots[0].rarityCap).toBe(5);
-    expect(groups[1].slots[1].classes).toEqual(['PIONEER', 'WARRIOR', 'TANK', 'SPECIAL']);
   });
 
   it('组合描述与券位配置不符时抛错', () => {

@@ -313,44 +313,6 @@
               "rarityCap": null
             }
           ]
-        },
-        {
-          "id": "recruit_group_random",
-          "name": "随心所欲",
-          "desc": "三张随机的招募券，其中一张必定出现5星临时招募",
-          "slots": [
-            {
-              "classes": [
-                "PIONEER",
-                "WARRIOR",
-                "TANK",
-                "SNIPER",
-                "CASTER",
-                "MEDIC",
-                "SUPPORT",
-                "SPECIAL"
-              ],
-              "rarityCap": 5
-            },
-            {
-              "classes": [
-                "PIONEER",
-                "WARRIOR",
-                "TANK",
-                "SPECIAL"
-              ],
-              "rarityCap": null
-            },
-            {
-              "classes": [
-                "SNIPER",
-                "CASTER",
-                "MEDIC",
-                "SUPPORT"
-              ],
-              "rarityCap": null
-            }
-          ]
         }
       ]
     }
