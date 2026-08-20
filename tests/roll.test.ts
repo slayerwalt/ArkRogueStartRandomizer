@@ -1,14 +1,22 @@
 import { describe, expect, it } from 'vitest';
-import { buildPool, pickOne, rerollSlot, rerollSquad, rollSlotOperator, rollStart } from '../src/lib/roll';
-import type { Operator, RecruitSlot, RollSettings, Theme } from '../src/lib/types';
+import { effectiveHopeCost, rollStart, type Rng } from '../src/lib/roll';
+import type { Operator, RecruitSlot, RollSettings, Squad, Theme } from '../src/lib/types';
+
+const squad: Squad = {
+  id: 'b1', name: '普通分队', desc: '', unlockCond: null, initialHopeBonus: 0, recruitDiscount: null,
+};
+const fortressSquad: Squad = {
+  id: 'b9', name: '堡垒战术分队', desc: '', unlockCond: null, initialHopeBonus: 0,
+  recruitDiscount: { professions: ['TANK', 'SUPPORT'], subProfessions: null, minRarity: 4, delta: -2 },
+};
+const hopeSquad: Squad = {
+  id: 'b4', name: '后勤分队', desc: '', unlockCond: null, initialHopeBonus: 2, recruitDiscount: null,
+};
 
 const theme: Theme = {
   id: 'rogue_6',
   name: '沉沦者的黑流树海',
-  squads: [
-    { id: 'b1', name: '指挥分队', desc: '', unlockCond: null },
-    { id: 'b2', name: '后勤分队', desc: '', unlockCond: null },
-  ],
+  squads: [squad, fortressSquad, hopeSquad],
   recruitGroups: [
     {
       id: 'g1',
@@ -19,109 +27,80 @@ const theme: Theme = {
         { classes: ['SNIPER'], rarityCap: null },
       ],
     },
-    { id: 'g2', name: '随心所欲', desc: '', slots: [{ classes: ['PIONEER', 'WARRIOR'], rarityCap: 5 }] },
   ],
 };
 
 const operators: Operator[] = [
-  { id: 'c1', name: '三星先锋', profession: 'PIONEER', rarity: 3 },
-  { id: 'c2', name: '六星先锋', profession: 'PIONEER', rarity: 6 },
-  { id: 'c3', name: '五星狙击', profession: 'SNIPER', rarity: 5 },
-  { id: 'c4', name: '六星近卫', profession: 'WARRIOR', rarity: 6 },
-  { id: 'c5', name: '五星近卫', profession: 'WARRIOR', rarity: 5 },
+  { id: 'c1', name: '六星先锋', profession: 'PIONEER', subProfession: 'pioneer', rarity: 6, hopeCost: 6, charDiscount: 0 },
+  { id: 'c2', name: '三星先锋', profession: 'PIONEER', subProfession: 'pioneer', rarity: 3, hopeCost: 0, charDiscount: 0 },
+  { id: 'c3', name: '六星重装', profession: 'TANK', subProfession: 'protector', rarity: 6, hopeCost: 6, charDiscount: 0 },
+  { id: 'm1', name: '机械师', profession: 'TANK', subProfession: 'shotprotector', rarity: 6, hopeCost: 6, charDiscount: -4 },
+  { id: 'c4', name: '五星狙击', profession: 'SNIPER', subProfession: 'fastshot', rarity: 5, hopeCost: 2, charDiscount: 0 },
+  { id: 'c5', name: '四星狙击', profession: 'SNIPER', subProfession: 'fastshot', rarity: 4, hopeCost: 0, charDiscount: 0 },
 ];
 
-const baseSettings: RollSettings = { withOperators: true, rarities: [3, 4, 5, 6], excludes: [] };
+const settings: RollSettings = { withOperators: true, excludes: [] };
 
-describe('pickOne', () => {
-  it('按 rng 值取元素', () => {
-    expect(pickOne(['a', 'b', 'c'], () => 0)).toBe('a');
-    expect(pickOne(['a', 'b', 'c'], () => 0.999)).toBe('c');
-  });
-  it('空数组抛错', () => {
-    expect(() => pickOne([], () => 0)).toThrow();
-  });
-});
+/** 依次返回给定数值的伪随机源，超出后重复最后一个 */
+function seqRng(values: number[]): Rng {
+  let i = 0;
+  return () => values[Math.min(i++, values.length - 1)];
+}
 
-describe('buildPool', () => {
-  const slot: RecruitSlot = { classes: ['PIONEER'], rarityCap: null };
+describe('effectiveHopeCost', () => {
+  it('基础消耗：六星6、五星2、四星及以下0', () => {
+    expect(effectiveHopeCost(operators[0], squad)).toBe(6); // 六星先锋
+    expect(effectiveHopeCost(operators[4], squad)).toBe(2); // 五星狙击
+    expect(effectiveHopeCost(operators[5], squad)).toBe(0); // 四星狙击
+    expect(effectiveHopeCost(operators[1], squad)).toBe(0); // 三星先锋
+  });
 
-  it('按职业过滤', () => {
-    expect(buildPool(operators, slot, baseSettings).map((o) => o.id)).toEqual(['c1', 'c2']);
+  it('分队职业减免：堡垒重装-2', () => {
+    expect(effectiveHopeCost(operators[2], fortressSquad)).toBe(4); // 六星重装 6-2
   });
-  it('按稀有度勾选过滤', () => {
-    const s = { ...baseSettings, rarities: [6] };
-    expect(buildPool(operators, slot, s).map((o) => o.id)).toEqual(['c2']);
-  });
-  it('按排除名单过滤', () => {
-    const s = { ...baseSettings, excludes: ['c2'] };
-    expect(buildPool(operators, slot, s).map((o) => o.id)).toEqual(['c1']);
-  });
-  it('rarityCap 限制最高星级', () => {
-    const capped: RecruitSlot = { classes: ['WARRIOR'], rarityCap: 5 };
-    expect(buildPool(operators, capped, baseSettings).map((o) => o.id)).toEqual(['c5']);
-  });
-});
 
-describe('rollSlotOperator', () => {
-  it('单职业券位从池中随机', () => {
-    const slot: RecruitSlot = { classes: ['SNIPER'], rarityCap: null };
-    expect(rollSlotOperator(operators, slot, baseSettings, () => 0)?.id).toBe('c3');
-  });
-  it('多职业券位从合并池均匀随机', () => {
-    const slot: RecruitSlot = { classes: ['PIONEER', 'WARRIOR'], rarityCap: null };
-    // 合并池按 operators 顺序 = [c1先锋, c2先锋, c4近卫, c5近卫]，rng 0 → c1
-    const op = rollSlotOperator(operators, slot, baseSettings, () => 0);
-    expect(op?.id).toBe('c1');
-  });
-  it('池为空返回 null', () => {
-    const slot: RecruitSlot = { classes: ['SNIPER'], rarityCap: null };
-    const s = { ...baseSettings, excludes: ['c3'] };
-    expect(rollSlotOperator(operators, slot, s, () => 0)).toBeNull();
-  });
-  it('多职业券位某职业池空时从其余职业正常随机', () => {
-    const slot: RecruitSlot = { classes: ['PIONEER', 'WARRIOR'], rarityCap: null };
-    const s = { ...baseSettings, excludes: ['c1', 'c2'] }; // 排除全部先锋
-    // 合并池 = [c4近卫, c5近卫]，rng 0 → c4
-    const op = rollSlotOperator(operators, slot, s, () => 0);
-    expect(op?.id).toBe('c4');
+  it('机械师减免：天赋-4，叠加分队-2', () => {
+    expect(effectiveHopeCost(operators[3], squad)).toBe(2); // 6-4
+    expect(effectiveHopeCost(operators[3], fortressSquad)).toBe(0); // 6-4-2
   });
 });
 
 describe('rollStart', () => {
+  it('硬约束：总希望消耗不超过初始希望', () => {
+    for (let i = 0; i < 100; i++) {
+      const r = rollStart(theme, operators, settings);
+      const total = r.slots.reduce((s, sl) => s + sl.hopeCost, 0);
+      expect(total).toBeLessThanOrEqual(r.initialHope);
+    }
+  });
+
+  it('尽量高星：预算6时先处理的券位选六星，剩余券位选0希望的四星', () => {
+    // rng: 第1次选普通分队(0)、第2次选唯一组合(0)、第3次 shuffle 不交换(0.9→先锋先)、第4次先锋选六星(0)、第5次狙击选四星(0)
+    const r = rollStart(theme, operators, settings, seqRng([0, 0, 0.9, 0, 0]));
+    expect(r.initialHope).toBe(6);
+    expect(r.slots[0].operator?.id).toBe('c1'); // 先锋 = 六星
+    expect(r.slots[1].operator?.id).toBe('c5'); // 狙击 = 四星（剩余预算0）
+  });
+
+  it('后勤分队初始希望 +2', () => {
+    // rng: 第1次选后勤分队(index 2 → 0.7)
+    const r = rollStart(theme, operators, settings, seqRng([0.7, 0, 0.9, 0, 0]));
+    expect(r.squad.id).toBe('b4');
+    expect(r.initialHope).toBe(8);
+  });
+
   it('关闭干员随机时券位不带干员', () => {
-    const s = { ...baseSettings, withOperators: false };
-    const r = rollStart(theme, operators, s, () => 0);
-    expect(r.squad.id).toBe('b1');
-    expect(r.group.id).toBe('g1');
-    expect(r.slots).toHaveLength(2);
+    const s = { ...settings, withOperators: false };
+    const r = rollStart(theme, operators, s, seqRng([0, 0, 0.9]));
     expect(r.slots.every((sl) => sl.operator === null && sl.empty === false)).toBe(true);
   });
-  it('开启干员随机时每个券位带干员', () => {
-    const r = rollStart(theme, operators, baseSettings, () => 0);
-    expect(r.slots[0].operator?.profession).toBe('PIONEER');
-    expect(r.slots[1].operator?.profession).toBe('SNIPER');
-  });
-  it('某券位池空时标记 empty，不影响其他券位', () => {
-    const s = { ...baseSettings, excludes: ['c1', 'c2'] }; // 先锋全排除
-    const r = rollStart(theme, operators, s, () => 0);
+
+  it('排除名单导致券位空池时标记 empty，不影响其他券位', () => {
+    const s = { ...settings, excludes: ['c1', 'c2'] }; // 排除全部先锋
+    // 先锋券位先处理：候选空 → empty
+    const r = rollStart(theme, operators, s, seqRng([0, 0, 0.9, 0, 0]));
     expect(r.slots[0].empty).toBe(true);
     expect(r.slots[0].operator).toBeNull();
     expect(r.slots[1].empty).toBe(false);
-  });
-});
-
-describe('rerollSquad', () => {
-  it('从分队集合中随机一个', () => {
-    expect(rerollSquad(theme, () => 0).id).toBe('b1');
-  });
-});
-
-describe('rerollSlot', () => {
-  it('保留原券位配置，只重抽干员', () => {
-    const slot: RecruitSlot = { classes: ['PIONEER'], rarityCap: null };
-    const r = rerollSlot(slot, operators, baseSettings, () => 0.999);
-    expect(r.slot).toBe(slot);
-    expect(r.operator?.id).toBe('c2');
   });
 });
