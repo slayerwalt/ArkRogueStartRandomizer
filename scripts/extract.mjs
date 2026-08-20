@@ -2,6 +2,14 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { extractOperators, extractRecruitGroups, extractSquads } from './lib/extract-core.mjs';
 
+function readJson(file) {
+  try {
+    return JSON.parse(fs.readFileSync(file, 'utf8'));
+  } catch (e) {
+    throw new Error(`读取或解析失败: ${file}\n${e.message}`);
+  }
+}
+
 const THEME_ID = 'rogue_6';
 
 const resDir = process.argv[2] ?? process.env.ARKNIGHTS_RES_DIR;
@@ -11,8 +19,8 @@ if (!resDir) {
 }
 
 const excelDir = path.join(resDir, 'gamedata', 'excel');
-const topic = JSON.parse(fs.readFileSync(path.join(excelDir, 'roguelike_topic_table.json'), 'utf8'));
-const charTable = JSON.parse(fs.readFileSync(path.join(excelDir, 'character_table.json'), 'utf8'));
+const topic = readJson(path.join(excelDir, 'roguelike_topic_table.json'));
+const charTable = readJson(path.join(excelDir, 'character_table.json'));
 
 const detail = topic.details?.[THEME_ID];
 if (!detail) throw new Error(`主题 ${THEME_ID} 在数据中不存在`);
@@ -22,7 +30,7 @@ const data = {
   themes: [
     {
       id: THEME_ID,
-      name: topic.topics[THEME_ID].name,
+      name: topic.topics?.[THEME_ID]?.name ?? THEME_ID,
       squads: extractSquads(detail),
       recruitGroups: extractRecruitGroups(detail),
     },
