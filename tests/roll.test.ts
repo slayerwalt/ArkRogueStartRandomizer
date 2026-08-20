@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { effectiveHopeCost, rollStart, type Rng } from '../src/lib/roll';
+import { effectiveHopeCost, rerollGroup, rerollSquad, rollStart, type Rng } from '../src/lib/roll';
 import type { Operator, RecruitSlot, RollSettings, Squad, Theme } from '../src/lib/types';
 
 const squad: Squad = {
@@ -62,6 +62,13 @@ describe('effectiveHopeCost', () => {
   it('机械师减免：天赋-4，叠加分队-2', () => {
     expect(effectiveHopeCost(operators[3], squad)).toBe(2); // 6-4
     expect(effectiveHopeCost(operators[3], fortressSquad)).toBe(0); // 6-4-2
+  });
+});
+
+describe('rerollSquad / rerollGroup', () => {
+  it('按 rng 从主题中选取分队与组合', () => {
+    expect(rerollSquad(theme, seqRng([0.7])).id).toBe('b4');
+    expect(rerollGroup(theme, seqRng([0])).id).toBe('g1');
   });
 });
 

@@ -7,7 +7,7 @@ defineProps<{
   slots: SlotResult[];
   withOperators: boolean;
 }>();
-const emit = defineEmits<{ rerollSlot: [index: number] }>();
+const emit = defineEmits<{ rerollSlot: [index: number]; rerollGroup: [] }>();
 
 function slotLabel(slot: SlotResult['slot']): string {
   const classes = slot.classes.map((c) => CLASS_CN[c] ?? c).join('、');
@@ -17,7 +17,10 @@ function slotLabel(slot: SlotResult['slot']): string {
 
 <template>
   <div class="card group-card">
-    <div class="card-title"><span class="label">招募组合</span></div>
+    <div class="card-title">
+      <span class="label">招募组合</span>
+      <button class="reroll" aria-label="重摇招募组合" title="重摇招募组合" @click="emit('rerollGroup')">↻</button>
+    </div>
     <div class="group-name">{{ group.name }}</div>
     <div class="group-desc">{{ group.desc }}</div>
     <div class="slots">

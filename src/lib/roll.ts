@@ -102,6 +102,10 @@ export function rerollSquad(theme: Theme, rng: Rng = Math.random): Squad {
   return pickOne(theme.squads, rng);
 }
 
+export function rerollGroup(theme: Theme, rng: Rng = Math.random): RecruitGroup {
+  return pickOne(theme.recruitGroups, rng);
+}
+
 export function rerollSlot(
   slot: RecruitSlot,
   operators: readonly Operator[],
