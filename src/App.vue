@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, watch } from 'vue';
+import { computed, ref, watch } from 'vue';
 import rawData from './data/rogue-data.json';
 import LeaderboardPanel from './components/LeaderboardPanel.vue';
 import RecruitSlots from './components/RecruitSlots.vue';
@@ -10,6 +10,7 @@ import { emptyPoolRarities } from './lib/pool';
 import { rerollGroup, rerollSlot, rerollSquad, rollSlotsFor, rollStart } from './lib/roll';
 import { createDefaultSettings, loadSettings, saveSettings } from './lib/settings';
 import { appendRecord, loadStats, type Outcome, type RecordedOperator } from './lib/stats';
+import { ROGUE_THEMES } from './lib/themes';
 import type { GameData, RollResult, RollSettings } from './lib/types';
 
 let data: GameData | null = null;
@@ -20,7 +21,13 @@ try {
   loadError.value = (e as Error).message;
 }
 
-const theme = data?.themes[0] ?? null;
+/** 页面顶部选中的肉鸽主题；默认黑流树海（目前唯一已开放的主题） */
+const selectedThemeId = ref('rogue_6');
+const selectedTheme = computed(
+  () => ROGUE_THEMES.find((t) => t.id === selectedThemeId.value) ?? ROGUE_THEMES[0],
+);
+/** 当前选中主题的游戏数据；未提取数据的主题为 null（显示开发中占位） */
+const theme = computed(() => data?.themes.find((t) => t.id === selectedThemeId.value) ?? null);
 const operators = data?.operators ?? [];
 
 const settings = ref<RollSettings>(createDefaultSettings());
@@ -36,6 +43,9 @@ if (data) {
 watch(settings, (s) => saveSettings(window.localStorage, s), { deep: true });
 
 const result = ref<RollResult | null>(null);
+/** 结果版本号：每次阵容变化自增，用作结果区的 key 以重放登场动画 */
+const resultVersion = ref(0);
+watch(result, () => resultVersion.value++);
 /** 当前阵容是否已点过「就这个了！」；阵容变化后恢复可接受状态 */
 const accepted = ref(false);
 const records = ref(data ? loadStats(window.localStorage) : []);
@@ -70,14 +80,14 @@ function record(outcome: Outcome, ops: RecordedOperator[]) {
 }
 
 function roll() {
-  if (!theme) return;
+  if (!theme.value) return;
   const reason = poolBlockReason();
   if (reason) {
     rollNotice.value = reason;
     return;
   }
   rollNotice.value = '';
-  result.value = rollStart(theme, operators, settings.value);
+  result.value = rollStart(theme.value, operators, settings.value);
   accepted.value = false;
 }
 
@@ -98,19 +108,19 @@ function onRerollAll() {
 }
 
 function onRerollSquad() {
-  if (!theme || !result.value) return;
+  if (!theme.value || !result.value) return;
   // 重摇分队后减免与预算改变，所有券位重新随机（组合保持不变）；原阵容记为放弃
   record('abandoned', currentOperators());
-  const squad = rerollSquad(theme);
+  const squad = rerollSquad(theme.value);
   result.value = rollSlotsFor(operators, settings.value, squad, result.value.group);
   accepted.value = false;
 }
 
 function onRerollGroup() {
-  if (!theme || !result.value) return;
+  if (!theme.value || !result.value) return;
   // 重摇招募组合，所有券位重新随机（分队保持不变）；原阵容记为放弃
   record('abandoned', currentOperators());
-  const group = rerollGroup(theme);
+  const group = rerollGroup(theme.value);
   result.value = rollSlotsFor(operators, settings.value, result.value.squad, group);
   accepted.value = false;
 }
@@ -129,33 +139,64 @@ function onRerollSlot(index: number) {
 </script>
 
 <template>
-  <h1>黑流树海开局随机器</h1>
+  <header class="site-header">
+    <div class="site-eyebrow">明日方舟 · 集成战略</div>
+    <h1>开局随机器</h1>
+    <div class="site-rule" aria-hidden="true"><span></span><i>◆</i><span></span></div>
+  </header>
+
+  <nav class="theme-select" aria-label="选择肉鸽主题">
+    <button
+      v-for="t in ROGUE_THEMES"
+      :key="t.id"
+      class="theme-tab"
+      :class="{ active: t.id === selectedThemeId }"
+      :aria-pressed="t.id === selectedThemeId"
+      @click="selectedThemeId = t.id"
+    >
+      <span class="theme-tab-name">{{ t.name }}</span>
+      <span v-if="!t.available" class="theme-tab-badge">开发中</span>
+    </button>
+  </nav>
+
+  <div class="theme-banner">
+    <img :key="selectedTheme.id" :src="selectedTheme.banner" :alt="selectedTheme.name" />
+  </div>
 
   <div v-if="loadError" class="error">{{ loadError }}</div>
 
-  <template v-else-if="theme">
+  <div v-else-if="!selectedTheme.available || !theme" class="wip-card">
+    <div class="wip-mark" aria-hidden="true">◆</div>
+    <div class="wip-title">正在开发中</div>
+    <div class="wip-desc">「{{ selectedTheme.name }}」的开局随机尚未开放，敬请期待</div>
+  </div>
+
+  <template v-else>
     <SettingsPanel v-model="settings" :operators="operators" />
     <p v-if="pruneNotice" class="notice">{{ pruneNotice }}</p>
     <button class="roll-button" @click="roll">🎲 开始随机</button>
     <p v-if="rollNotice" class="notice">{{ rollNotice }}</p>
     <template v-if="result">
-      <div class="hope-bar">
-        初始希望 <strong>{{ result.initialHope }}</strong>，本局消耗
-        <strong>{{ result.slots.reduce((s, sl) => s + sl.hopeCost, 0) }}</strong>
-      </div>
-      <SquadCard :squad="result.squad" @reroll="onRerollSquad" />
-      <RecruitSlots
-        :group="result.group"
-        :slots="result.slots"
-        :with-operators="settings.withOperators"
-        @reroll-slot="onRerollSlot"
-        @reroll-group="onRerollGroup"
-      />
-      <div v-if="settings.withOperators" class="action-bar">
-        <button class="accept-button" :disabled="accepted" @click="onAccept">
-          {{ accepted ? '✓ 就这个了！' : '就这个了！' }}
-        </button>
-        <button class="reroll-all-button" @click="onRerollAll">重roll！</button>
+      <!-- key 绑定结果版本号，重roll 后重新挂载以重放登场动画 -->
+      <div :key="resultVersion" class="result-area">
+        <div class="hope-bar">
+          初始希望 <strong>{{ result.initialHope }}</strong>，本局消耗
+          <strong>{{ result.slots.reduce((s, sl) => s + sl.hopeCost, 0) }}</strong>
+        </div>
+        <SquadCard :squad="result.squad" @reroll="onRerollSquad" />
+        <RecruitSlots
+          :group="result.group"
+          :slots="result.slots"
+          :with-operators="settings.withOperators"
+          @reroll-slot="onRerollSlot"
+          @reroll-group="onRerollGroup"
+        />
+        <div v-if="settings.withOperators" class="action-bar">
+          <button class="accept-button" :disabled="accepted" @click="onAccept">
+            {{ accepted ? '✓ 就这个了！' : '就这个了！' }}
+          </button>
+          <button class="reroll-all-button" @click="onRerollAll">重roll！</button>
+        </div>
       </div>
     </template>
     <LeaderboardPanel :records="records" />

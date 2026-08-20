@@ -16,3 +16,8 @@ export const SUB_PROFESSION_CN: Record<string, string> = {
   primguard: '本源近卫',
   ritualist: '巫役',
 };
+
+/** 干员头像地址（ArknightsAssets2 仓库的 jsDelivr 镜像，加载失败时前端隐藏图片降级为文字） */
+export function operatorAvatarUrl(id: string): string {
+  return `https://cdn.jsdelivr.net/gh/ArknightsAssets/ArknightsAssets2@cn/assets/dyn/arts/charavatars/${id}.png`;
+}

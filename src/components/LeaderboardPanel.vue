@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
+import { operatorAvatarUrl } from '../lib/constants';
 import {
   buildLeaderboard,
   LEADERBOARD_RARITIES,
@@ -10,6 +11,12 @@ import {
 const props = defineProps<{ records: StartRecord[] }>();
 
 const rarity = ref<number>(6);
+/** 头像加载失败的干员 id，失败后只显示文字 */
+const brokenAvatars = ref(new Set<string>());
+
+function onAvatarError(id: string) {
+  brokenAvatars.value = new Set(brokenAvatars.value).add(id);
+}
 
 const boards: { outcome: Outcome; title: string; className: string }[] = [
   { outcome: 'accepted', title: '最喜欢的开局干员', className: 'accept' },
@@ -35,6 +42,14 @@ const entries = computed(() =>
         <ol v-if="b.list.length" class="board-list">
           <li v-for="(e, i) in b.list" :key="e.id">
             <span class="board-rank">{{ i + 1 }}</span>
+            <img
+              v-if="!brokenAvatars.has(e.id)"
+              class="board-avatar"
+              :src="operatorAvatarUrl(e.id)"
+              :alt="e.name"
+              loading="lazy"
+              @error="onAvatarError(e.id)"
+            />
             <span class="board-name">{{ e.name }}</span>
             <span class="board-count">{{ e.count }}</span>
           </li>
