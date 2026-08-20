@@ -17,5 +17,9 @@ export function validateGameData(data: unknown): GameData {
   if (!Array.isArray(t.squads) || t.squads.length === 0 || !Array.isArray(t.recruitGroups) || t.recruitGroups.length === 0) {
     throw new Error('数据文件缺少分队或招募组合，请重新运行数据提取脚本');
   }
+  const firstOp = d.operators[0];
+  if (typeof firstOp.subProfession !== 'string' || typeof firstOp.hopeCost !== 'number') {
+    throw new Error('数据文件版本过旧，请重新运行数据提取脚本');
+  }
   return d;
 }
