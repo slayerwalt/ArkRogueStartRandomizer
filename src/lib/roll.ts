@@ -32,7 +32,13 @@ export function effectiveHopeCost(operator: Operator, squad: Squad): number {
   return Math.max(0, cost);
 }
 
-/** 候选池：职业在券位允许范围内 ∧ 星级符合 rarityCap ∧ 未排除 ∧ 实际消耗不超预算 */
+/** 随机范围（白名单）：3 星及以下不受限制，4/5/6 星必须在范围内 */
+function allowedByPool(operator: Operator, settings: RollSettings): boolean {
+  if (operator.rarity <= 3) return true;
+  return (settings.pool[operator.rarity] ?? []).includes(operator.id);
+}
+
+/** 候选池：职业在券位允许范围内 ∧ 星级符合 rarityCap ∧ 在随机范围内 ∧ 实际消耗不超预算 */
 function buildPool(
   operators: readonly Operator[],
   slot: RecruitSlot,
@@ -44,7 +50,7 @@ function buildPool(
     (o) =>
       slot.classes.includes(o.profession) &&
       (slot.rarityCap === null || o.rarity <= slot.rarityCap) &&
-      !settings.excludes.includes(o.id) &&
+      allowedByPool(o, settings) &&
       effectiveHopeCost(o, squad) <= budget,
   );
 }

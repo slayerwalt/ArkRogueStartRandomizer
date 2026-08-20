@@ -39,7 +39,10 @@ const operators: Operator[] = [
   { id: 'c5', name: '四星狙击', profession: 'SNIPER', subProfession: 'fastshot', rarity: 4, hopeCost: 0, charDiscount: 0 },
 ];
 
-const settings: RollSettings = { withOperators: true, excludes: [] };
+const settings: RollSettings = {
+  withOperators: true,
+  pool: { 6: ['c1', 'c3', 'm1'], 5: ['c4'], 4: ['c5'] },
+};
 
 /** 依次返回给定数值的伪随机源，超出后重复最后一个 */
 function seqRng(values: number[]): Rng {
@@ -102,12 +105,25 @@ describe('rollStart', () => {
     expect(r.slots.every((sl) => sl.operator === null && sl.empty === false)).toBe(true);
   });
 
-  it('排除名单导致券位空池时标记 empty，不影响其他券位', () => {
-    const s = { ...settings, excludes: ['c1', 'c2'] }; // 排除全部先锋
-    // 先锋券位先处理：候选空 → empty
+  it('随机范围（白名单）：范围外的高星干员不会被选', () => {
+    // 5 星狙击移出范围 → 狙击位只能选 4 星
+    const s: RollSettings = { ...settings, pool: { 6: ['c1', 'c3', 'm1'], 5: [], 4: ['c5'] } };
     const r = rollStart(theme, operators, s, seqRng([0, 0, 0.9, 0, 0]));
-    expect(r.slots[0].empty).toBe(true);
-    expect(r.slots[0].operator).toBeNull();
-    expect(r.slots[1].empty).toBe(false);
+    expect(r.slots[1].operator?.id).toBe('c5');
+  });
+
+  it('3 星及以下不受范围限制：范围全空时先锋位仍可选 3 星', () => {
+    const s: RollSettings = { ...settings, pool: { 6: [], 5: [], 4: [] } };
+    const r = rollStart(theme, operators, s, seqRng([0, 0, 0.9, 0, 0]));
+    expect(r.slots[0].operator?.id).toBe('c2'); // 3 星先锋
+  });
+
+  it('范围内无可用干员时券位标记 empty，不影响其他券位', () => {
+    // 狙击范围全空，且没有 3 星狙击 → 狙击券位空池
+    const s: RollSettings = { ...settings, pool: { 6: ['c1', 'c3', 'm1'], 5: [], 4: [] } };
+    const r = rollStart(theme, operators, s, seqRng([0, 0, 0.9, 0, 0]));
+    expect(r.slots[1].empty).toBe(true);
+    expect(r.slots[1].operator).toBeNull();
+    expect(r.slots[0].empty).toBe(false);
   });
 });

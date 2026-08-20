@@ -6,8 +6,9 @@ import RecruitSlots from './components/RecruitSlots.vue';
 import SettingsPanel from './components/SettingsPanel.vue';
 import SquadCard from './components/SquadCard.vue';
 import { validateGameData } from './lib/data';
+import { emptyPoolRarities } from './lib/pool';
 import { rerollGroup, rerollSlot, rerollSquad, rollSlotsFor, rollStart } from './lib/roll';
-import { DEFAULT_SETTINGS, loadSettings, saveSettings } from './lib/settings';
+import { createDefaultSettings, loadSettings, saveSettings } from './lib/settings';
 import { appendRecord, loadStats, type Outcome, type RecordedOperator } from './lib/stats';
 import type { GameData, RollResult, RollSettings } from './lib/types';
 
@@ -22,7 +23,7 @@ try {
 const theme = data?.themes[0] ?? null;
 const operators = data?.operators ?? [];
 
-const settings = ref<RollSettings>({ ...DEFAULT_SETTINGS, excludes: [] });
+const settings = ref<RollSettings>(createDefaultSettings());
 const pruneNotice = ref('');
 if (data) {
   const loaded = loadSettings(window.localStorage, new Set(operators.map((o) => o.id)));
@@ -35,9 +36,18 @@ if (data) {
 watch(settings, (s) => saveSettings(window.localStorage, s), { deep: true });
 
 const result = ref<RollResult | null>(null);
-/** 当前阵容是否已点过「接受」；阵容变化后恢复可接受状态 */
+/** 当前阵容是否已点过「就这个了！」；阵容变化后恢复可接受状态 */
 const accepted = ref(false);
 const records = ref(data ? loadStats(window.localStorage) : []);
+/** 随机范围为空等导致无法随机时的提示 */
+const rollNotice = ref('');
+
+/** 有星级的随机范围为空时返回提示文案，否则返回空串 */
+function poolBlockReason(): string {
+  if (!settings.value.withOperators) return '';
+  const missing = emptyPoolRarities(settings.value);
+  return missing.length ? `请先在随机设置中为 ${missing.join('、')} 星选择随机范围` : '';
+}
 
 function currentOperators(): RecordedOperator[] {
   if (!result.value) return [];
@@ -61,6 +71,12 @@ function record(outcome: Outcome, ops: RecordedOperator[]) {
 
 function roll() {
   if (!theme) return;
+  const reason = poolBlockReason();
+  if (reason) {
+    rollNotice.value = reason;
+    return;
+  }
+  rollNotice.value = '';
   result.value = rollStart(theme, operators, settings.value);
   accepted.value = false;
 }
@@ -72,6 +88,11 @@ function onAccept() {
 }
 
 function onRerollAll() {
+  // 先校验范围，避免把当前阵容误记为放弃
+  if (poolBlockReason()) {
+    roll();
+    return;
+  }
   if (result.value && !accepted.value) record('abandoned', currentOperators());
   roll();
 }
@@ -116,6 +137,7 @@ function onRerollSlot(index: number) {
     <SettingsPanel v-model="settings" :operators="operators" />
     <p v-if="pruneNotice" class="notice">{{ pruneNotice }}</p>
     <button class="roll-button" @click="roll">🎲 开始随机</button>
+    <p v-if="rollNotice" class="notice">{{ rollNotice }}</p>
     <template v-if="result">
       <div class="hope-bar">
         初始希望 <strong>{{ result.initialHope }}</strong>，本局消耗

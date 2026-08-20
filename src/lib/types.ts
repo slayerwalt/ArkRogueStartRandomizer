@@ -49,9 +49,13 @@ export interface GameData {
   operators: Operator[];
 }
 
+/** 随机范围按这三个星级分别设置；3 星及以下不受范围限制，始终可随机 */
+export const POOL_RARITIES = [6, 5, 4] as const;
+
 export interface RollSettings {
   withOperators: boolean;
-  excludes: string[];
+  /** 随机范围（白名单）：按星级存放允许随机的干员 id，仅约束 4/5/6 星 */
+  pool: Record<number, string[]>;
 }
 
 export interface SlotResult {
