@@ -13,6 +13,32 @@ export const CLASS_CN = {
   SPECIAL: '特种',
 };
 
+// 本源研修分队减免涉及的子职业（需与前端 src/lib/constants.ts 保持同步）
+export const SUB_PROFESSION_CN = {
+  primcaster: '本源术师',
+  primprotector: '本源铁卫',
+  primguard: '本源近卫',
+  ritualist: '巫役',
+};
+
+// 开局招募希望消耗（1 起始星级）
+const HOPE_COST = { 3: 0, 4: 0, 5: 2, 6: 6 };
+const MECHANIST_ID = 'char_4230_mcnist';
+const MECHANIST_DISCOUNT = -4;
+
+// 分队初始希望加成
+const SQUAD_HOPE_BONUS = { rogue_6_band_4: 2 };
+// 分队招募减免（4 星及以上，delta -2）
+const SQUAD_DISCOUNT = {
+  rogue_6_band_8: { professions: ['PIONEER', 'WARRIOR'], subProfessions: null, minRarity: 4, delta: -2 },
+  rogue_6_band_9: { professions: ['TANK', 'SUPPORT'], subProfessions: null, minRarity: 4, delta: -2 },
+  rogue_6_band_10: { professions: ['MEDIC', 'SNIPER'], subProfessions: null, minRarity: 4, delta: -2 },
+  rogue_6_band_11: { professions: ['CASTER', 'SPECIAL'], subProfessions: null, minRarity: 4, delta: -2 },
+  rogue_6_band_12: { professions: ['MEDIC', 'SNIPER', 'CASTER', 'SUPPORT'], subProfessions: null, minRarity: 4, delta: -2 },
+  rogue_6_band_13: { professions: ['PIONEER', 'WARRIOR', 'TANK', 'SPECIAL'], subProfessions: null, minRarity: 4, delta: -2 },
+  rogue_6_band_14: { professions: null, subProfessions: ['primcaster', 'primprotector', 'primguard', 'ritualist'], minRarity: 4, delta: -2 },
+};
+
 // 招募组合 → 券位配置。游戏数据中不存在该关联（客户端逻辑），
 // 根据组合描述文本核对：固定券位组合 1-5 的职业中文名必须出现在 desc 中；
 // recruit_group_random 为「随心所欲」：5星临时招募券 + 地面四职业券 + 高台四职业券。
@@ -35,7 +61,14 @@ export function extractSquads(topicDetail) {
     .map((r) => {
       const item = topicDetail.items[r.itemId];
       if (!item) throw new Error(`分队 ${r.itemId} 缺少 items 数据`);
-      return { id: r.itemId, name: item.name, desc: item.usage, unlockCond: item.unlockCondDesc ?? null };
+      return {
+        id: r.itemId,
+        name: item.name,
+        desc: item.usage,
+        unlockCond: item.unlockCondDesc ?? null,
+        initialHopeBonus: SQUAD_HOPE_BONUS[r.itemId] ?? 0,
+        recruitDiscount: SQUAD_DISCOUNT[r.itemId] ?? null,
+      };
     })
     // 排序键依赖 id 形如 <主题>_band_<数字> 的前提（如 rogue_6_band_1）
     .sort((a, b) => Number(a.id.split('_').pop()) - Number(b.id.split('_').pop()));
@@ -66,6 +99,17 @@ export function extractRecruitGroups(topicDetail) {
 export function extractOperators(charTable) {
   return Object.entries(charTable)
     .filter(([, c]) => ALL_CLASSES.includes(c.profession) && !c.isNotObtainable && c.rarity >= 2)
-    .map(([id, c]) => ({ id, name: c.name, profession: c.profession, rarity: c.rarity + 1 }))
+    .map(([id, c]) => {
+      const rarity = c.rarity + 1;
+      return {
+        id,
+        name: c.name,
+        profession: c.profession,
+        subProfession: c.subProfessionId,
+        rarity,
+        hopeCost: HOPE_COST[rarity] ?? 0,
+        charDiscount: id === MECHANIST_ID ? MECHANIST_DISCOUNT : 0,
+      };
+    })
     .sort((a, b) => a.id.localeCompare(b.id));
 }
