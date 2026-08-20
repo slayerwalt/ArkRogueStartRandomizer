@@ -39,6 +39,20 @@ describe('loadSettings', () => {
     expect(settings.rarities).toEqual([5]);
     expect(settings.excludes).toEqual([]);
   });
+  it('rarities 全部非法时回退默认星级', () => {
+    const raw = JSON.stringify({ withOperators: true, rarities: [0, 7], excludes: [] });
+    const { settings } = loadSettings(memStorage({ [SETTINGS_KEY]: raw }), validIds);
+    expect(settings.rarities).toEqual(DEFAULT_SETTINGS.rarities);
+  });
+  it('返回全新对象且修改不污染默认设置', () => {
+    const { settings } = loadSettings(memStorage(), validIds);
+    expect(settings).not.toBe(DEFAULT_SETTINGS);
+    expect(settings.rarities).not.toBe(DEFAULT_SETTINGS.rarities);
+    settings.rarities.push(999);
+    settings.excludes.push('c1');
+    expect(DEFAULT_SETTINGS.rarities).toEqual([3, 4, 5, 6]);
+    expect(DEFAULT_SETTINGS.excludes).toEqual([]);
+  });
 });
 
 describe('saveSettings', () => {
