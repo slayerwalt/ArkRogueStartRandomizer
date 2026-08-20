@@ -4,7 +4,7 @@ export type Rng = () => number;
 
 export function pickOne<T>(items: readonly T[], rng: Rng): T {
   if (items.length === 0) throw new Error('pickOne: 数组为空');
-  return items[Math.floor(rng() * items.length)];
+  return items[Math.min(Math.floor(rng() * items.length), items.length - 1)];
 }
 
 export function buildPool(

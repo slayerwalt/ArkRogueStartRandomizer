@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildPool, pickOne, rerollSlot, rollSlotOperator, rollStart, type Rng } from '../src/lib/roll';
+import { buildPool, pickOne, rerollSlot, rerollSquad, rollSlotOperator, rollStart, type Rng } from '../src/lib/roll';
 import type { Operator, RecruitSlot, RollSettings, Theme } from '../src/lib/types';
 
 const theme: Theme = {
@@ -85,6 +85,12 @@ describe('rollSlotOperator', () => {
     const s = { ...baseSettings, excludes: ['c3'] };
     expect(rollSlotOperator(operators, slot, s, () => 0)).toBeNull();
   });
+  it('多职业券位选中职业池空时返回 null', () => {
+    const slot: RecruitSlot = { classes: ['PIONEER', 'WARRIOR'], rarityCap: null };
+    const s = { ...baseSettings, excludes: ['c1', 'c2'] }; // 排除全部先锋
+    // seqRng([0, 0])：第1次 0 → 选中 PIONEER；该职业池已空 → 返回 null
+    expect(rollSlotOperator(operators, slot, s, seqRng([0, 0]))).toBeNull();
+  });
 });
 
 describe('rollStart', () => {
@@ -107,6 +113,12 @@ describe('rollStart', () => {
     expect(r.slots[0].empty).toBe(true);
     expect(r.slots[0].operator).toBeNull();
     expect(r.slots[1].empty).toBe(false);
+  });
+});
+
+describe('rerollSquad', () => {
+  it('从分队集合中随机一个', () => {
+    expect(rerollSquad(theme, () => 0).id).toBe('b1');
   });
 });
 
