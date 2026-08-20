@@ -27,7 +27,7 @@ v2 相比 v1 的核心变化：**引入「希望」资源约束**，保证随机
 
 - 星级筛选（改为自动「尽量高星」）
 - 1-2 星干员（不纳入随机池）
-- 临时招募干员（Sharp/Pith/Touch/Stormeye/Mechanist 等 15 位，走单独的临时招募券，开局组合不涉及）
+- 预备干员、临时招募干员（Sharp/Pith/Touch/Stormeye/Mechanist 等）、盟约干员（均不纳入随机池）
 - 保密等级（难度）选择（开局是初始招募，难度加成只影响后续招募）
 - 图片素材、按用户 box 过滤、后端、历代主题数据
 - 机械师的精通等级选择（默认满级）
@@ -79,8 +79,8 @@ v2 相比 v1 的核心变化：**引入「希望」资源约束**，保证随机
 ### 4.1 范围
 
 - 仅保留 **3-6 星**干员（1-2 星不纳入）
-- 纳入 **预备干员**（13 位，`isNotObtainable` 但通过开局招募券的 `extraCharIds` 获得）
-- 排除：TOKEN（召唤物）、TRAP（陷阱）、临时招募干员（15 位）、盟约干员（1 位）
+- 仅保留常规可获得干员（`isNotObtainable === false`）
+- 排除：TOKEN（召唤物）、TRAP（陷阱）、预备干员、临时招募干员（Sharp/Pith/Touch/Stormeye/Mechanist 等 15 位）、盟约干员（1 位）
 
 ### 4.2 每名干员需要的新字段
 
@@ -147,7 +147,7 @@ v2 相比 v1 的核心变化：**引入「希望」资源约束**，保证随机
 1. **随机分队**：从 15 个基础分队均匀随机。
 2. **计算初始希望**：6 + 分队 `initialHopeBonus`。
 3. **随机招募组合**：从 6 个开局组合均匀随机，得到券位列表（每个券位含职业范围、rarityCap）。
-4. **从左到右逐个券位随机干员**：
+4. **随机打乱券位顺序，按随机顺序逐个券位随机干员**（不让高星干员总固定在某一个券位）：
    - 候选 = 满足「职业在该券位允许范围内 ∧ 3-6 星 ∧ 未排除」的干员。
    - 对每个候选计算**实际希望消耗** = `hopeCost` + 分队减免（若符合职业/子职业且 ≥4 星）+ `charDiscount`（机械师 −4），下限为 0。
    - 过滤出「实际消耗 ≤ 剩余希望」的干员。
@@ -159,7 +159,7 @@ v2 相比 v1 的核心变化：**引入「希望」资源约束**，保证随机
 
 ## 7. 数据提取脚本改动
 
-- `extractOperators`：过滤改为「8 大职业 ∧ 非 TOKEN/TRAP ∧ rarity ∈ [2,5]（即 3-6 星）」。干员池 = 常规可获得干员（`isNotObtainable === false`）+ 预备干员。预备干员的权威来源是 `recruitTickets` 各券的 `extraCharIds`（收集其 id 集合，如 `char_504_rguard` 等 13 位），不要用名字/前缀猜测；临时招募干员（Sharp/Pith/Touch/Stormeye/Mechanist/Raidian/Misery/郁金香/暮落 等，`isNotObtainable` 且不在 `extraCharIds`）与盟约干员不纳入。新增 `subProfession`、`hopeCost`、`charDiscount` 字段。
+- `extractOperators`：过滤改为「8 大职业 ∧ 非 TOKEN/TRAP ∧ `isNotObtainable === false` ∧ rarity ∈ [2,5]（即 3-6 星）」。预备干员、临时招募干员（Sharp/Pith/Touch/Stormeye/Mechanist/Raidian/Misery/郁金香/暮落 等）、盟约干员均不纳入。新增 `subProfession`、`hopeCost`、`charDiscount` 字段。
 - `extractSquads`：新增 `initialHopeBonus`（后勤 +2）与 `recruitDiscount`（解析 `relics.rogue_6_band_*.buffs[recruit_cost]`/`recruit_cost_sub_profession`）。
 - 建立子职业中文名映射与机械师减免常量。
 
