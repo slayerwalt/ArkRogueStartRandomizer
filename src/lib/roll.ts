@@ -21,15 +21,14 @@ export function buildPool(
   );
 }
 
-/** 多职业券位先均匀随机职业、再从该职业池随机（模拟游戏内先抽券种）；池空返回 null */
+/** 从「职业在该券位允许范围内 ∧ 稀有度勾选 ∧ 未排除」的合并池中均匀随机一名干员；合并池空返回 null */
 export function rollSlotOperator(
   operators: readonly Operator[],
   slot: RecruitSlot,
   settings: RollSettings,
   rng: Rng,
 ): Operator | null {
-  const classes = slot.classes.length > 1 ? [pickOne(slot.classes, rng)] : slot.classes;
-  const pool = buildPool(operators, { ...slot, classes }, settings);
+  const pool = buildPool(operators, slot, settings);
   if (pool.length === 0) return null;
   return pickOne(pool, rng);
 }

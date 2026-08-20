@@ -29,7 +29,7 @@ export function loadSettings(
       withOperators:
         typeof parsed.withOperators === 'boolean' ? parsed.withOperators : DEFAULT_SETTINGS.withOperators,
       rarities: Array.isArray(parsed.rarities)
-        ? parsed.rarities.filter((r: unknown) => Number.isInteger(r) && (r as number) >= 1 && (r as number) <= 6)
+        ? parsed.rarities.filter((r: unknown) => Number.isInteger(r) && (r as number) >= 3 && (r as number) <= 6)
         : [...DEFAULT_SETTINGS.rarities],
       excludes: Array.isArray(parsed.excludes)
         ? parsed.excludes.filter((id: unknown) => typeof id === 'string')

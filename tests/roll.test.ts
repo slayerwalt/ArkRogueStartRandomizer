@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildPool, pickOne, rerollSlot, rerollSquad, rollSlotOperator, rollStart, type Rng } from '../src/lib/roll';
+import { buildPool, pickOne, rerollSlot, rerollSquad, rollSlotOperator, rollStart } from '../src/lib/roll';
 import type { Operator, RecruitSlot, RollSettings, Theme } from '../src/lib/types';
 
 const theme: Theme = {
@@ -32,12 +32,6 @@ const operators: Operator[] = [
 ];
 
 const baseSettings: RollSettings = { withOperators: true, rarities: [3, 4, 5, 6], excludes: [] };
-
-/** 依次返回给定数值的伪随机源，超出后重复最后一个 */
-function seqRng(values: number[]): Rng {
-  let i = 0;
-  return () => values[Math.min(i++, values.length - 1)];
-}
 
 describe('pickOne', () => {
   it('按 rng 值取元素', () => {
@@ -74,22 +68,23 @@ describe('rollSlotOperator', () => {
     const slot: RecruitSlot = { classes: ['SNIPER'], rarityCap: null };
     expect(rollSlotOperator(operators, slot, baseSettings, () => 0)?.id).toBe('c3');
   });
-  it('多职业券位先随机职业再随机干员', () => {
+  it('多职业券位从合并池均匀随机', () => {
     const slot: RecruitSlot = { classes: ['PIONEER', 'WARRIOR'], rarityCap: null };
-    // rng 第1次 0.999 → 职业 WARRIOR；第2次 0 → 该职业池第一个（c4 或 c5，按过滤顺序）
-    const op = rollSlotOperator(operators, slot, baseSettings, seqRng([0.999, 0]));
-    expect(op?.profession).toBe('WARRIOR');
+    // 合并池按 operators 顺序 = [c1先锋, c2先锋, c4近卫, c5近卫]，rng 0 → c1
+    const op = rollSlotOperator(operators, slot, baseSettings, () => 0);
+    expect(op?.id).toBe('c1');
   });
   it('池为空返回 null', () => {
     const slot: RecruitSlot = { classes: ['SNIPER'], rarityCap: null };
     const s = { ...baseSettings, excludes: ['c3'] };
     expect(rollSlotOperator(operators, slot, s, () => 0)).toBeNull();
   });
-  it('多职业券位选中职业池空时返回 null', () => {
+  it('多职业券位某职业池空时从其余职业正常随机', () => {
     const slot: RecruitSlot = { classes: ['PIONEER', 'WARRIOR'], rarityCap: null };
     const s = { ...baseSettings, excludes: ['c1', 'c2'] }; // 排除全部先锋
-    // seqRng([0, 0])：第1次 0 → 选中 PIONEER；该职业池已空 → 返回 null
-    expect(rollSlotOperator(operators, slot, s, seqRng([0, 0]))).toBeNull();
+    // 合并池 = [c4近卫, c5近卫]，rng 0 → c4
+    const op = rollSlotOperator(operators, slot, s, () => 0);
+    expect(op?.id).toBe('c4');
   });
 });
 
