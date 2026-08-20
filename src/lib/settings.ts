@@ -16,7 +16,7 @@ function defaultPool(): Record<number, string[]> {
 }
 
 export function createDefaultSettings(): RollSettings {
-  return { withOperators: true, pool: defaultPool() };
+  return { pool: defaultPool() };
 }
 
 export const DEFAULT_SETTINGS: RollSettings = createDefaultSettings();
@@ -40,11 +40,7 @@ export function loadSettings(
       pruned += ids.length - valid.length;
       pool[r] = valid;
     }
-    const settings: RollSettings = {
-      withOperators:
-        typeof parsed.withOperators === 'boolean' ? parsed.withOperators : DEFAULT_SETTINGS.withOperators,
-      pool,
-    };
+    const settings: RollSettings = { pool };
     return { settings, pruned };
   } catch {
     return { settings: createDefaultSettings(), pruned: 0 };

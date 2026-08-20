@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
+import arknightsLogo from './assets/arknights-logo.svg';
 import rawData from './data/rogue-data.json';
 import RecruitSlots from './components/RecruitSlots.vue';
 import SettingsPanel from './components/SettingsPanel.vue';
@@ -29,6 +30,8 @@ const theme = computed(() => data?.themes.find((t) => t.id === selectedThemeId.v
 const operators = data?.operators ?? [];
 
 const settings = ref<RollSettings>(createDefaultSettings());
+/** 随机设置面板是否展开（由页眉左上角设置图标控制） */
+const settingsOpen = ref(false);
 const pruneNotice = ref('');
 if (data) {
   const loaded = loadSettings(window.localStorage, new Set(operators.map((o) => o.id)));
@@ -49,7 +52,6 @@ const rollNotice = ref('');
 
 /** 有星级的随机范围为空时返回提示文案，否则返回空串 */
 function poolBlockReason(): string {
-  if (!settings.value.withOperators) return '';
   const missing = emptyPoolRarities(settings.value);
   return missing.length ? `请先在随机设置中为 ${missing.join('、')} 星选择随机范围` : '';
 }
@@ -90,28 +92,35 @@ function onRerollSlot(index: number) {
 </script>
 
 <template>
+  <div class="page-bg" aria-hidden="true">
+    <img :key="selectedTheme.id" :src="selectedTheme.banner" alt="" />
+  </div>
+
   <header class="site-header">
-    <div class="site-eyebrow">明日方舟 · 集成战略</div>
-    <h1>开局随机器</h1>
-    <div class="site-rule" aria-hidden="true"><span></span><i>◆</i><span></span></div>
+    <div class="site-header-inner">
+      <button
+        class="settings-icon"
+        aria-haspopup="dialog"
+        aria-label="随机设置"
+        title="随机设置"
+        @click="settingsOpen = true"
+      >
+        <span class="settings-icon-glyph" aria-hidden="true">⚙</span>
+        <span>设置</span>
+      </button>
+      <div class="site-brand">
+        <img class="site-logo" :src="arknightsLogo" alt="明日方舟" />
+        <span class="site-divider">|</span>
+        <span class="site-title">集成战略随机开局</span>
+      </div>
+      <select v-model="selectedThemeId" class="theme-select" aria-label="选择肉鸽主题">
+        <option v-for="t in ROGUE_THEMES" :key="t.id" :value="t.id">{{ t.name }}</option>
+      </select>
+    </div>
   </header>
 
-  <nav class="theme-select" aria-label="选择肉鸽主题">
-    <button
-      v-for="t in ROGUE_THEMES"
-      :key="t.id"
-      class="theme-tab"
-      :class="{ active: t.id === selectedThemeId }"
-      :aria-pressed="t.id === selectedThemeId"
-      @click="selectedThemeId = t.id"
-    >
-      <span class="theme-tab-name">{{ t.name }}</span>
-      <span v-if="!t.available" class="theme-tab-badge">开发中</span>
-    </button>
-  </nav>
-
-  <div class="theme-banner">
-    <img :key="selectedTheme.id" :src="selectedTheme.banner" :alt="selectedTheme.name" />
+  <div class="theme-showcase">
+    <img :key="selectedTheme.id" :src="selectedTheme.showcase" :alt="selectedTheme.name" />
   </div>
 
   <div v-if="loadError" class="error">{{ loadError }}</div>
@@ -123,9 +132,8 @@ function onRerollSlot(index: number) {
   </div>
 
   <template v-else>
-    <SettingsPanel v-model="settings" :operators="operators" />
     <p v-if="pruneNotice" class="notice">{{ pruneNotice }}</p>
-    <button class="roll-button" @click="roll">🎲 开始随机</button>
+    <button v-if="!result" class="roll-button" @click="roll">开始随机</button>
     <p v-if="rollNotice" class="notice">{{ rollNotice }}</p>
     <template v-if="result">
       <!-- key 绑定结果版本号，重roll 后重新挂载以重放登场动画 -->
@@ -138,14 +146,26 @@ function onRerollSlot(index: number) {
         <RecruitSlots
           :group="result.group"
           :slots="result.slots"
-          :with-operators="settings.withOperators"
           @reroll-slot="onRerollSlot"
           @reroll-group="onRerollGroup"
         />
-        <div v-if="settings.withOperators" class="action-bar">
+        <div class="action-bar">
           <button class="reroll-all-button" @click="roll">重roll！</button>
         </div>
       </div>
     </template>
   </template>
+
+  <!-- 随机设置弹窗 -->
+  <div v-if="settingsOpen" class="settings-overlay" @click.self="settingsOpen = false">
+    <div class="settings-modal" role="dialog" aria-modal="true" aria-label="随机设置">
+      <div class="settings-modal-head">
+        <span class="settings-modal-title">随机设置</span>
+        <button class="settings-close" aria-label="关闭" @click="settingsOpen = false">×</button>
+      </div>
+      <div class="settings-modal-body">
+        <SettingsPanel v-model="settings" :operators="operators" />
+      </div>
+    </div>
+  </div>
 </template>

@@ -65,7 +65,6 @@ function rollSlot(
   budget: number,
   rng: Rng,
 ): SlotResult {
-  if (!settings.withOperators) return { slot, operator: null, hopeCost: 0, empty: false };
   const pool = buildPool(operators, slot, settings, squad, budget);
   if (pool.length === 0) return { slot, operator: null, hopeCost: 0, empty: true };
   // 尽量高星：取候选池中最高星级的一档，从中随机一名

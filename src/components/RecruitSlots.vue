@@ -6,7 +6,6 @@ import type { RecruitGroup, SlotResult } from '../lib/types';
 defineProps<{
   group: RecruitGroup;
   slots: SlotResult[];
-  withOperators: boolean;
 }>();
 const emit = defineEmits<{ rerollSlot: [index: number]; rerollGroup: [] }>();
 
@@ -36,29 +35,26 @@ function slotLabel(slot: SlotResult['slot']): string {
         <div class="slot-class">
           {{ slotLabel(s.slot) }}
           <button
-            v-if="withOperators"
             class="reroll"
             aria-label="重摇该券位"
             title="重摇该券位"
             @click="emit('rerollSlot', i)"
           >↻</button>
         </div>
-        <template v-if="withOperators">
-          <div v-if="s.empty" class="slot-empty">无可选干员，请调整排除名单</div>
-          <div v-else-if="s.operator" class="slot-operator" :class="`rarity-${s.operator.rarity}`">
-            <img
-              v-if="!brokenAvatars.has(s.operator.id)"
-              class="slot-avatar"
-              :src="operatorAvatarUrl(s.operator.id)"
-              :alt="s.operator.name"
-              loading="lazy"
-              @error="onAvatarError(s.operator.id)"
-            />
-            <span class="slot-name">{{ s.operator.name }}</span>
-            <span class="stars">{{ '★'.repeat(s.operator.rarity) }}</span>
-            <span class="hope">{{ s.hopeCost }}希望</span>
-          </div>
-        </template>
+        <div v-if="s.empty" class="slot-empty">无可选干员，请调整范围</div>
+        <div v-else-if="s.operator" class="slot-operator" :class="`rarity-${s.operator.rarity}`">
+          <img
+            v-if="!brokenAvatars.has(s.operator.id)"
+            class="slot-avatar"
+            :src="operatorAvatarUrl(s.operator.id)"
+            :alt="s.operator.name"
+            loading="lazy"
+            @error="onAvatarError(s.operator.id)"
+          />
+          <span class="slot-name">{{ s.operator.name }}</span>
+          <span class="stars">{{ '★'.repeat(s.operator.rarity) }}</span>
+          <span class="hope">{{ s.hopeCost }}希望</span>
+        </div>
       </div>
     </div>
   </div>

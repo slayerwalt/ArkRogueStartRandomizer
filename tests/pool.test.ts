@@ -39,11 +39,11 @@ describe('applyPreset', () => {
 
 describe('emptyPoolRarities', () => {
   it('返回范围为空的 4/5/6 星级', () => {
-    const s: RollSettings = { withOperators: true, pool: { 6: ['a'], 5: [], 4: [] } };
+    const s: RollSettings = { pool: { 6: ['a'], 5: [], 4: [] } };
     expect(emptyPoolRarities(s)).toEqual([5, 4]);
   });
   it('范围齐全时返回空数组', () => {
-    const s: RollSettings = { withOperators: true, pool: { 6: ['a'], 5: ['b'], 4: ['c'] } };
+    const s: RollSettings = { pool: { 6: ['a'], 5: ['b'], 4: ['c'] } };
     expect(emptyPoolRarities(s)).toEqual([]);
   });
 });

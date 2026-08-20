@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
 import { COMMON_OPERATORS } from '../lib/common-operators';
+import { operatorAvatarUrl } from '../lib/constants';
 import { applyPreset, detectPreset, type PoolPreset } from '../lib/pool';
 import { POOL_RARITIES, type Operator, type RollSettings } from '../lib/types';
 
@@ -10,15 +11,18 @@ const props = defineProps<{
 }>();
 const emit = defineEmits<{ 'update:modelValue': [value: RollSettings] }>();
 
-const open = ref(false);
-/** 当前展开「调整」的星级；null 表示全部收起 */
-const tuning = ref<number | null>(null);
+/** 头像加载失败的干员 id，失败后降级为纯文字展示 */
+const brokenAvatars = ref(new Set<string>());
+
+function onAvatarError(id: string) {
+  brokenAvatars.value = new Set(brokenAvatars.value).add(id);
+}
 
 function update(patch: Partial<RollSettings>) {
   emit('update:modelValue', { ...props.modelValue, ...patch });
 }
 
-/** 各星级的干员列表（按名称排序，用于微调勾选） */
+/** 各星级的干员列表（按名称排序，用于勾选） */
 const operatorsByRarity = computed(() => {
   const map = new Map<number, Operator[]>();
   for (const r of POOL_RARITIES) {
@@ -47,10 +51,17 @@ function presetOf(rarity: number): PoolPreset {
   return detectPreset(selectedOf(rarity), all, COMMON_OPERATORS[rarity] ?? []);
 }
 
-function onPreset(rarity: number, value: string) {
-  if (value === 'custom') return;
+/** 点击「常见」：勾选应用常见名单，取消勾选则清空该星级范围 */
+function onCommon(rarity: number, checked: boolean) {
   const all = (operatorsByRarity.value.get(rarity) ?? []).map((o) => o.id);
-  const next = applyPreset(value as Exclude<PoolPreset, 'custom'>, all, COMMON_OPERATORS[rarity] ?? []);
+  const next = checked ? applyPreset('common', all, COMMON_OPERATORS[rarity] ?? []) : [];
+  update({ pool: { ...props.modelValue.pool, [rarity]: next } });
+}
+
+/** 点击「全选」：勾选应用全部，取消勾选则清空该星级范围 */
+function onAll(rarity: number, checked: boolean) {
+  const all = (operatorsByRarity.value.get(rarity) ?? []).map((o) => o.id);
+  const next = checked ? applyPreset('all', all, COMMON_OPERATORS[rarity] ?? []) : [];
   update({ pool: { ...props.modelValue.pool, [rarity]: next } });
 }
 
@@ -60,62 +71,51 @@ function toggleOperator(rarity: number, id: string, checked: boolean) {
   else sel.delete(id);
   update({ pool: { ...props.modelValue.pool, [rarity]: [...sel] } });
 }
-
-const PRESET_LABELS: { value: string; label: string }[] = [
-  { value: 'all', label: '全选' },
-  { value: 'common', label: '常见' },
-  { value: 'none', label: '全不选' },
-];
 </script>
 
 <template>
-  <section class="settings">
-    <button class="settings-toggle" :aria-expanded="open" @click="open = !open">
-      ⚙ 随机设置 {{ open ? '▲' : '▼' }}
-    </button>
-    <div v-if="open" class="settings-body">
-      <label class="row">
+  <p class="pool-desc">说明：为了防止随机到冷门干员难以开局，内置了一个对常见干员的筛选。</p>
+  <div v-for="r in POOL_RARITIES" :key="r" class="rarity-group">
+    <div class="rarity-head">
+      <span class="rarity-title" :class="`rarity-${r}`">{{ r }}星</span>
+      <span class="rarity-count">
+        已选 {{ selectedSets.get(r)?.size ?? 0 }}/{{ operatorsByRarity.get(r)?.length ?? 0 }}
+      </span>
+      <label class="preset-check">
         <input
           type="checkbox"
-          :checked="modelValue.withOperators"
-          @change="update({ withOperators: ($event.target as HTMLInputElement).checked })"
+          :checked="presetOf(r) === 'common'"
+          @change="onCommon(r, ($event.target as HTMLInputElement).checked)"
         />
-        随机具体干员
+        常见
       </label>
-      <div class="pool-section">
-        <div class="pool-title">随机干员范围（4/5/6 星）：</div>
-        <div v-for="r in POOL_RARITIES" :key="r">
-          <div class="row pool-row">
-            <span class="pool-label">{{ r }}星</span>
-            <select
-              class="pool-select"
-              :value="presetOf(r)"
-              :aria-label="`${r}星随机范围`"
-              @change="onPreset(r, ($event.target as HTMLSelectElement).value)"
-            >
-              <option v-for="p in PRESET_LABELS" :key="p.value" :value="p.value">{{ p.label }}</option>
-              <option v-if="presetOf(r) === 'custom'" value="custom" disabled>自定义</option>
-            </select>
-            <span class="pool-count">
-              已选 {{ selectedSets.get(r)?.size ?? 0 }}/{{ operatorsByRarity.get(r)?.length ?? 0 }}
-            </span>
-            <button class="pool-tune" @click="tuning = tuning === r ? null : r">
-              {{ tuning === r ? '收起' : '调整' }}
-            </button>
-          </div>
-          <div v-if="tuning === r" class="tune-box">
-            <label v-for="o in operatorsByRarity.get(r)" :key="o.id" class="tune-item">
-              <input
-                type="checkbox"
-                :checked="selectedSets.get(r)?.has(o.id)"
-                @change="toggleOperator(r, o.id, ($event.target as HTMLInputElement).checked)"
-              />
-              {{ o.name }}
-            </label>
-          </div>
-        </div>
-        <div class="pool-hint">3 星及以下不受范围限制，始终可以随机到。</div>
-      </div>
+      <label class="preset-check">
+        <input
+          type="checkbox"
+          :checked="presetOf(r) === 'all'"
+          @change="onAll(r, ($event.target as HTMLInputElement).checked)"
+        />
+        全选
+      </label>
     </div>
-  </section>
+    <div class="operator-grid">
+      <label v-for="o in operatorsByRarity.get(r)" :key="o.id" class="operator-item">
+        <input
+          type="checkbox"
+          :checked="selectedSets.get(r)?.has(o.id)"
+          @change="toggleOperator(r, o.id, ($event.target as HTMLInputElement).checked)"
+        />
+        <img
+          v-if="!brokenAvatars.has(o.id)"
+          class="operator-avatar"
+          :src="operatorAvatarUrl(o.id)"
+          :alt="o.name"
+          loading="lazy"
+          @error="onAvatarError(o.id)"
+        />
+        <span class="operator-name">{{ o.name }}</span>
+      </label>
+    </div>
+  </div>
+  <p class="pool-hint">3 星及以下不受范围限制，始终可以随机到。</p>
 </template>

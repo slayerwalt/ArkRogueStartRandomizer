@@ -45,7 +45,6 @@ const operators: Operator[] = [
 ];
 
 const settings: RollSettings = {
-  withOperators: true,
   pool: { 6: ['c1', 'c3', 'm1'], 5: ['c4'], 4: ['c5'] },
 };
 
@@ -111,12 +110,6 @@ describe('rollStart', () => {
     expect(r.initialHope).toBe(8);
   });
 
-  it('关闭干员随机时券位不带干员', () => {
-    const s = { ...settings, withOperators: false };
-    const r = rollStart(theme, operators, s, seqRng([0, 0, 0.9]));
-    expect(r.slots.every((sl) => sl.operator === null && sl.empty === false)).toBe(true);
-  });
-
   it('随机范围（白名单）：范围外的高星干员不会被选', () => {
     // 5 星狙击移出范围 → 狙击位只能选 4 星
     const s: RollSettings = { ...settings, pool: { 6: ['c1', 'c3', 'm1'], 5: [], 4: ['c5'] } };
@@ -148,7 +141,7 @@ describe('rollStart', () => {
       id: 'x', name: 'x', squads: [squad],
       recruitGroups: [{ id: 'gc', name: '术师', desc: '', slots: [{ classes: ['CASTER'], rarityCap: null }] }],
     };
-    const s: RollSettings = { withOperators: true, pool: { 6: [], 5: ['amiya'], 4: [] } };
+    const s: RollSettings = { pool: { 6: [], 5: ['amiya'], 4: [] } };
     const rMedic = rollStart(medicTheme, operators, s, seqRng([0, 0, 0]));
     expect(rMedic.slots[0].operator?.id).toBe('amiya');
     const rCaster = rollStart(casterTheme, operators, s, seqRng([0, 0, 0]));

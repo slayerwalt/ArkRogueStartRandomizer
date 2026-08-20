@@ -55,7 +55,6 @@ export interface GameData {
 export const POOL_RARITIES = [6, 5, 4] as const;
 
 export interface RollSettings {
-  withOperators: boolean;
   /** 随机范围（白名单）：按星级存放允许随机的干员 id，仅约束 4/5/6 星 */
   pool: Record<number, string[]>;
 }

@@ -34,25 +34,23 @@ describe('loadSettings', () => {
   });
   it('读取各星级的范围，剔除数据中不存在的干员并计数', () => {
     const raw = JSON.stringify({
-      withOperators: false,
       pool: { 6: ['c1', 'ghost'], 5: ['c2'], 4: [] },
     });
     const { settings, pruned } = loadSettings(memStorage({ [SETTINGS_KEY]: raw }), validIds);
-    expect(settings.withOperators).toBe(false);
     expect(settings.pool[6]).toEqual(['c1']);
     expect(settings.pool[5]).toEqual(['c2']);
     expect(settings.pool[4]).toEqual([]);
     expect(pruned).toBe(1);
   });
   it('存储中缺少某星级时该星级保留默认（常见名单）', () => {
-    const raw = JSON.stringify({ withOperators: true, pool: { 6: ['c1'] } });
+    const raw = JSON.stringify({ pool: { 6: ['c1'] } });
     const { settings } = loadSettings(memStorage({ [SETTINGS_KEY]: raw }), validIds);
     expect(settings.pool[6]).toEqual(['c1']);
     expect(settings.pool[5]).toEqual(DEFAULT_SETTINGS.pool[5]);
     expect(settings.pool[4]).toEqual(DEFAULT_SETTINGS.pool[4]);
   });
   it('忽略旧版本的排除名单字段', () => {
-    const raw = JSON.stringify({ withOperators: true, excludes: ['c1'] });
+    const raw = JSON.stringify({ excludes: ['c1'] });
     const { settings, pruned } = loadSettings(memStorage({ [SETTINGS_KEY]: raw }), validIds);
     expect(settings).toEqual(DEFAULT_SETTINGS);
     expect(pruned).toBe(0);
@@ -69,7 +67,7 @@ describe('loadSettings', () => {
 describe('saveSettings', () => {
   it('写入后可完整读回', () => {
     const storage = memStorage();
-    const s = { withOperators: false, pool: { 6: ['c1'], 5: ['c2'], 4: ['c3'] } };
+    const s = { pool: { 6: ['c1'], 5: ['c2'], 4: ['c3'] } };
     saveSettings(storage, s);
     const { settings } = loadSettings(storage, validIds);
     expect(settings).toEqual(s);
