@@ -25,6 +25,10 @@ export const SUB_PROFESSION_CN = {
 const HOPE_COST = { 3: 0, 4: 0, 5: 2, 6: 6 };
 const MECHANIST_ID = 'char_4230_mcnist';
 const MECHANIST_DISCOUNT = -4;
+// 阿米娅形态切换：默认医疗形态（仅医疗券可抓），但可享受近卫/医疗/术师三职业的分队减免
+const AMIYA_ID = 'char_002_amiya';
+const AMIYA_PROFESSION = 'MEDIC';
+const AMIYA_BONUS_PROFESSIONS = ['WARRIOR', 'CASTER'];
 
 // 分队初始希望加成
 const SQUAD_HOPE_BONUS = { rogue_6_band_4: 2 };
@@ -101,14 +105,16 @@ export function extractOperators(charTable) {
     .filter(([, c]) => ALL_CLASSES.includes(c.profession) && !c.isNotObtainable && c.rarity >= 2)
     .map(([id, c]) => {
       const rarity = c.rarity + 1;
+      const isAmiya = id === AMIYA_ID;
       return {
         id,
         name: c.name,
-        profession: c.profession,
+        profession: isAmiya ? AMIYA_PROFESSION : c.profession,
         subProfession: c.subProfessionId,
         rarity,
         hopeCost: HOPE_COST[rarity] ?? 0,
         charDiscount: id === MECHANIST_ID ? MECHANIST_DISCOUNT : 0,
+        ...(isAmiya ? { bonusProfessions: AMIYA_BONUS_PROFESSIONS } : {}),
       };
     })
     .sort((a, b) => a.id.localeCompare(b.id));

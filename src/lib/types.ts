@@ -41,6 +41,8 @@ export interface Operator {
   rarity: number;
   hopeCost: number;
   charDiscount: number;
+  /** 额外享受分队减免的职业（阿米娅等形态切换干员），仅影响减免匹配、不影响券位匹配 */
+  bonusProfessions?: string[];
 }
 
 export interface GameData {

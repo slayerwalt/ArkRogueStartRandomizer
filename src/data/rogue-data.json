@@ -359,11 +359,12 @@
     {
       "id": "char_002_amiya",
       "name": "阿米娅",
-      "profession": "CASTER",
+      "profession": "MEDIC",
       "subProfession": "corecaster",
       "rarity": 5,
       "hopeCost": 2,
-      "charDiscount": 0
+      "charDiscount": 0,
+      "bonusProfessions": ["WARRIOR", "CASTER"]
     },
     {
       "id": "char_003_kalts",

@@ -24,8 +24,10 @@ export function effectiveHopeCost(operator: Operator, squad: Squad): number {
   let cost = operator.hopeCost + operator.charDiscount;
   const d = squad.recruitDiscount;
   if (d && operator.rarity >= d.minRarity) {
+    // 形态切换干员（如阿米娅）可享受其所有形态职业的减免
+    const professions = [operator.profession, ...(operator.bonusProfessions ?? [])];
     const match =
-      (d.professions && d.professions.includes(operator.profession)) ||
+      (d.professions && professions.some((p) => d.professions!.includes(p))) ||
       (d.subProfessions && d.subProfessions.includes(operator.subProfession));
     if (match) cost += d.delta;
   }

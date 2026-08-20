@@ -9,6 +9,10 @@ const fortressSquad: Squad = {
   id: 'b9', name: '堡垒战术分队', desc: '', unlockCond: null, initialHopeBonus: 0,
   recruitDiscount: { professions: ['TANK', 'SUPPORT'], subProfessions: null, minRarity: 4, delta: -2 },
 };
+const strikeSquad: Squad = {
+  id: 'b8', name: '突击战术分队', desc: '', unlockCond: null, initialHopeBonus: 0,
+  recruitDiscount: { professions: ['PIONEER', 'WARRIOR'], subProfessions: null, minRarity: 4, delta: -2 },
+};
 const hopeSquad: Squad = {
   id: 'b4', name: '后勤分队', desc: '', unlockCond: null, initialHopeBonus: 2, recruitDiscount: null,
 };
@@ -37,6 +41,7 @@ const operators: Operator[] = [
   { id: 'm1', name: '机械师', profession: 'TANK', subProfession: 'shotprotector', rarity: 6, hopeCost: 6, charDiscount: -4 },
   { id: 'c4', name: '五星狙击', profession: 'SNIPER', subProfession: 'fastshot', rarity: 5, hopeCost: 2, charDiscount: 0 },
   { id: 'c5', name: '四星狙击', profession: 'SNIPER', subProfession: 'fastshot', rarity: 4, hopeCost: 0, charDiscount: 0 },
+  { id: 'amiya', name: '阿米娅', profession: 'MEDIC', subProfession: 'corecaster', rarity: 5, hopeCost: 2, charDiscount: 0, bonusProfessions: ['WARRIOR', 'CASTER'] },
 ];
 
 const settings: RollSettings = {
@@ -65,6 +70,13 @@ describe('effectiveHopeCost', () => {
   it('机械师减免：天赋-4，叠加分队-2', () => {
     expect(effectiveHopeCost(operators[3], squad)).toBe(2); // 6-4
     expect(effectiveHopeCost(operators[3], fortressSquad)).toBe(0); // 6-4-2
+  });
+
+  it('阿米娅（医疗形态）可享受近卫/术师职业的减免，重装/辅助减免不生效', () => {
+    const amiya = operators[6];
+    expect(effectiveHopeCost(amiya, squad)).toBe(2); // 无减免
+    expect(effectiveHopeCost(amiya, strikeSquad)).toBe(0); // 突击减近卫，医疗阿米娅吃到
+    expect(effectiveHopeCost(amiya, fortressSquad)).toBe(2); // 堡垒减重装/辅助，不匹配
   });
 });
 
@@ -125,5 +137,22 @@ describe('rollStart', () => {
     expect(r.slots[1].empty).toBe(true);
     expect(r.slots[1].operator).toBeNull();
     expect(r.slots[0].empty).toBe(false);
+  });
+
+  it('阿米娅默认医疗形态：只在医疗券可抓，术师券抓不到', () => {
+    const medicTheme: Theme = {
+      id: 'x', name: 'x', squads: [squad],
+      recruitGroups: [{ id: 'gm', name: '医疗', desc: '', slots: [{ classes: ['MEDIC'], rarityCap: null }] }],
+    };
+    const casterTheme: Theme = {
+      id: 'x', name: 'x', squads: [squad],
+      recruitGroups: [{ id: 'gc', name: '术师', desc: '', slots: [{ classes: ['CASTER'], rarityCap: null }] }],
+    };
+    const s: RollSettings = { withOperators: true, pool: { 6: [], 5: ['amiya'], 4: [] } };
+    const rMedic = rollStart(medicTheme, operators, s, seqRng([0, 0, 0]));
+    expect(rMedic.slots[0].operator?.id).toBe('amiya');
+    const rCaster = rollStart(casterTheme, operators, s, seqRng([0, 0, 0]));
+    expect(rCaster.slots[0].empty).toBe(true);
+    expect(rCaster.slots[0].operator).toBeNull();
   });
 });

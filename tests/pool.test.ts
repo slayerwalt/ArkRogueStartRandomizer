@@ -71,3 +71,12 @@ describe('常见名单', () => {
     }
   });
 });
+
+describe('阿米娅特殊规则', () => {
+  it('默认医疗形态，且减免职业包含近卫与术师', () => {
+    const amiya = rawData.operators.find((o) => o.id === 'char_002_amiya');
+    expect(amiya).toBeTruthy();
+    expect(amiya!.profession).toBe('MEDIC');
+    expect(amiya!.bonusProfessions).toEqual(['WARRIOR', 'CASTER']);
+  });
+});

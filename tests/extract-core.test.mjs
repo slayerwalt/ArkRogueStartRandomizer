@@ -125,4 +125,16 @@ describe('extractOperators', () => {
   it('空 charTable 返回空数组', () => {
     expect(extractOperators({})).toEqual([]);
   });
+
+  it('阿米娅特殊规则：职业改为医疗，附加近卫/术师减免职业', () => {
+    const table = {
+      char_002_amiya: { name: '阿米娅', profession: 'CASTER', subProfessionId: 'corecaster', rarity: 4, isNotObtainable: false },
+    };
+    expect(extractOperators(table)).toEqual([
+      {
+        id: 'char_002_amiya', name: '阿米娅', profession: 'MEDIC', subProfession: 'corecaster',
+        rarity: 5, hopeCost: 2, charDiscount: 0, bonusProfessions: ['WARRIOR', 'CASTER'],
+      },
+    ]);
+  });
 });
