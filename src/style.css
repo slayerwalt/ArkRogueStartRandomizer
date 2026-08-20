@@ -199,3 +199,20 @@ h1 {
   color: #d8a04a;
   font-size: 13px;
 }
+
+.hope-bar {
+  color: #9aa0ad;
+  font-size: 13px;
+  margin-bottom: 8px;
+}
+
+.hope-bar strong {
+  color: #c9a959;
+}
+
+.hope {
+  display: block;
+  margin-top: 2px;
+  color: #7ec8ff;
+  font-size: 12px;
+}

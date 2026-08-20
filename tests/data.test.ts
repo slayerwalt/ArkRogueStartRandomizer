@@ -11,7 +11,7 @@ const valid = {
       recruitGroups: [{ id: 'g1', name: '先手必胜', desc: 'x', slots: [{ classes: ['PIONEER'], rarityCap: null }] }],
     },
   ],
-  operators: [{ id: 'c1', name: '干员甲', profession: 'PIONEER', rarity: 3 }],
+  operators: [{ id: 'c1', name: '干员甲', profession: 'PIONEER', subProfession: 'pioneer', rarity: 3, hopeCost: 0, charDiscount: 0 }],
 };
 
 describe('validateGameData', () => {
@@ -27,6 +27,10 @@ describe('validateGameData', () => {
   it('主题缺少分队或招募组合时报错', () => {
     const bad = { ...valid, themes: [{ ...valid.themes[0], squads: [] }] };
     expect(() => validateGameData(bad)).toThrow(/分队或招募组合/);
+  });
+  it('数据版本过旧（缺子职业/希望消耗）时报错', () => {
+    const bad = { ...valid, operators: [{ id: 'c1', name: '干员甲', profession: 'PIONEER', rarity: 3 }] };
+    expect(() => validateGameData(bad)).toThrow(/版本过旧/);
   });
   it('完全非法的输入报错而不是白屏', () => {
     expect(() => validateGameData(null)).toThrow(/数据文件/);

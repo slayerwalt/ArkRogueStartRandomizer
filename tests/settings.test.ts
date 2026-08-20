@@ -25,32 +25,23 @@ describe('loadSettings', () => {
     expect(settings).toEqual(DEFAULT_SETTINGS);
   });
   it('剔除数据中不存在的干员并计数', () => {
-    const raw = JSON.stringify({ withOperators: false, rarities: [5, 6], excludes: ['c1', 'ghost'] });
+    const raw = JSON.stringify({ withOperators: false, excludes: ['c1', 'ghost'] });
     const { settings, pruned } = loadSettings(memStorage({ [SETTINGS_KEY]: raw }), validIds);
     expect(settings.withOperators).toBe(false);
-    expect(settings.rarities).toEqual([5, 6]);
     expect(settings.excludes).toEqual(['c1']);
     expect(pruned).toBe(1);
   });
   it('非法字段回退默认值', () => {
-    const raw = JSON.stringify({ withOperators: 'yes', rarities: [0, 7, 'x', 5], excludes: 'nope' });
+    const raw = JSON.stringify({ withOperators: 'yes', excludes: 'nope' });
     const { settings } = loadSettings(memStorage({ [SETTINGS_KEY]: raw }), validIds);
     expect(settings.withOperators).toBe(DEFAULT_SETTINGS.withOperators);
-    expect(settings.rarities).toEqual([5]);
     expect(settings.excludes).toEqual([]);
-  });
-  it('rarities 全部非法时回退默认星级', () => {
-    const raw = JSON.stringify({ withOperators: true, rarities: [0, 7], excludes: [] });
-    const { settings } = loadSettings(memStorage({ [SETTINGS_KEY]: raw }), validIds);
-    expect(settings.rarities).toEqual(DEFAULT_SETTINGS.rarities);
   });
   it('返回全新对象且修改不污染默认设置', () => {
     const { settings } = loadSettings(memStorage(), validIds);
     expect(settings).not.toBe(DEFAULT_SETTINGS);
-    expect(settings.rarities).not.toBe(DEFAULT_SETTINGS.rarities);
-    settings.rarities.push(999);
+    expect(settings.excludes).not.toBe(DEFAULT_SETTINGS.excludes);
     settings.excludes.push('c1');
-    expect(DEFAULT_SETTINGS.rarities).toEqual([3, 4, 5, 6]);
     expect(DEFAULT_SETTINGS.excludes).toEqual([]);
   });
 });
@@ -58,7 +49,7 @@ describe('loadSettings', () => {
 describe('saveSettings', () => {
   it('写入后可完整读回', () => {
     const storage = memStorage();
-    const s = { withOperators: false, rarities: [6], excludes: ['c2'] };
+    const s = { withOperators: false, excludes: ['c2'] };
     saveSettings(storage, s);
     const { settings } = loadSettings(storage, validIds);
     expect(settings).toEqual(s);

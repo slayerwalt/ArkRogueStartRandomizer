@@ -11,19 +11,8 @@ const emit = defineEmits<{ 'update:modelValue': [value: RollSettings] }>();
 const open = ref(false);
 const keyword = ref('');
 
-const RARITY_OPTIONS = [3, 4, 5, 6];
-
 function update(patch: Partial<RollSettings>) {
   emit('update:modelValue', { ...props.modelValue, ...patch });
-}
-
-function toggleRarity(r: number) {
-  const has = props.modelValue.rarities.includes(r);
-  const rarities = has
-    ? props.modelValue.rarities.filter((x) => x !== r)
-    : [...props.modelValue.rarities, r].sort((a, b) => a - b);
-  if (rarities.length === 0) return; // 至少保留一个星级
-  update({ rarities });
 }
 
 const excludeSet = computed(() => new Set(props.modelValue.excludes));
@@ -62,17 +51,6 @@ function removeExclude(id: string) {
         />
         随机具体干员
       </label>
-      <div class="row">
-        参与随机的星级：
-        <label v-for="r in RARITY_OPTIONS" :key="r">
-          <input
-            type="checkbox"
-            :checked="modelValue.rarities.includes(r)"
-            @change="toggleRarity(r)"
-          />
-          {{ r }}星
-        </label>
-      </div>
       <div class="row exclude-box">
         <div>排除名单（{{ modelValue.excludes.length }}）：</div>
         <input v-model="keyword" aria-label="搜索干员" placeholder="输入干员名搜索并排除" />

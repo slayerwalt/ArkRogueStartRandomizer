@@ -1,8 +1,17 @@
+export interface RecruitDiscount {
+  professions: string[] | null;
+  subProfessions: string[] | null;
+  minRarity: number;
+  delta: number;
+}
+
 export interface Squad {
   id: string;
   name: string;
   desc: string;
   unlockCond: string | null;
+  initialHopeBonus: number;
+  recruitDiscount: RecruitDiscount | null;
 }
 
 export interface RecruitSlot {
@@ -28,7 +37,10 @@ export interface Operator {
   id: string;
   name: string;
   profession: string;
+  subProfession: string;
   rarity: number;
+  hopeCost: number;
+  charDiscount: number;
 }
 
 export interface GameData {
@@ -39,13 +51,14 @@ export interface GameData {
 
 export interface RollSettings {
   withOperators: boolean;
-  rarities: number[];
   excludes: string[];
 }
 
 export interface SlotResult {
   slot: RecruitSlot;
   operator: Operator | null;
+  /** 该券位实际消耗的希望 */
+  hopeCost: number;
   /** 开了干员随机但过滤后池子为空 */
   empty: boolean;
 }
@@ -53,5 +66,6 @@ export interface SlotResult {
 export interface RollResult {
   squad: Squad;
   group: RecruitGroup;
+  initialHope: number;
   slots: SlotResult[];
 }
