@@ -8,3 +8,11 @@ export const CLASS_CN: Record<string, string> = {
   SUPPORT: '辅助',
   SPECIAL: '特种',
 };
+
+// 本源研修分队减免涉及的子职业（与 scripts/lib/extract-core.mjs 保持同步）
+export const SUB_PROFESSION_CN: Record<string, string> = {
+  primcaster: '本源术师',
+  primprotector: '本源铁卫',
+  primguard: '本源近卫',
+  ritualist: '巫役',
+};
