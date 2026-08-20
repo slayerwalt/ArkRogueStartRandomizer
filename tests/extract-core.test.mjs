@@ -37,6 +37,16 @@ describe('extractSquads', () => {
       { id: 'rogue_6_band_3', name: '特勤分队', desc: '可携带干员+2', unlockCond: '完成游戏结局' },
     ]);
   });
+
+  it('分队缺少 items 数据时抛错', () => {
+    const bad = {
+      ...fakeTopicDetail,
+      items: {
+        rogue_6_band_3: fakeTopicDetail.items.rogue_6_band_3,
+      },
+    };
+    expect(() => extractSquads(bad)).toThrow(/缺少 items 数据/);
+  });
 });
 
 describe('extractRecruitGroups', () => {
@@ -63,6 +73,33 @@ describe('extractRecruitGroups', () => {
     };
     expect(() => extractRecruitGroups(bad)).toThrow(/券位配置不符/);
   });
+
+  it('init 中找不到 modeGrade=0 的开局配置时抛错', () => {
+    const bad = {
+      ...fakeTopicDetail,
+      init: [{ modeGrade: 1, initialRecruitGroup: ['recruit_group_1'] }],
+    };
+    expect(() => extractRecruitGroups(bad)).toThrow(/modeGrade=0/);
+  });
+
+  it('组合缺少 recruitGrps 数据时抛错', () => {
+    const bad = {
+      ...fakeTopicDetail,
+      init: [{ modeGrade: 0, initialRecruitGroup: ['recruit_group_1', 'recruit_group_missing'] }],
+    };
+    expect(() => extractRecruitGroups(bad)).toThrow(/缺少 recruitGrps 数据/);
+  });
+
+  it('组合缺少 GROUP_SLOTS 券位配置时抛错', () => {
+    const bad = {
+      ...fakeTopicDetail,
+      init: [{ modeGrade: 0, initialRecruitGroup: ['recruit_group_unknown'] }],
+      recruitGrps: {
+        recruit_group_unknown: { id: 'recruit_group_unknown', name: '未知组合', desc: '先锋招募券一张' },
+      },
+    };
+    expect(() => extractRecruitGroups(bad)).toThrow(/缺少招募组合.*券位配置/);
+  });
 });
 
 describe('extractOperators', () => {
@@ -72,5 +109,9 @@ describe('extractOperators', () => {
       { id: 'char_a', name: '六星近卫', profession: 'WARRIOR', rarity: 6 },
       { id: 'char_b', name: '三星先锋', profession: 'PIONEER', rarity: 3 },
     ]);
+  });
+
+  it('空 charTable 返回空数组', () => {
+    expect(extractOperators({})).toEqual([]);
   });
 });

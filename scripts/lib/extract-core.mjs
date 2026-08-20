@@ -1,3 +1,5 @@
+// 本文件为零依赖 Node ESM，无法 import TS 模块；
+// 下方 ALL_CLASSES 与 CLASS_CN 需与前端 src/lib/constants.ts 保持同步。
 export const ALL_CLASSES = ['PIONEER', 'WARRIOR', 'TANK', 'SNIPER', 'CASTER', 'MEDIC', 'SUPPORT', 'SPECIAL'];
 
 export const CLASS_CN = {
@@ -35,6 +37,7 @@ export function extractSquads(topicDetail) {
       if (!item) throw new Error(`分队 ${r.itemId} 缺少 items 数据`);
       return { id: r.itemId, name: item.name, desc: item.usage, unlockCond: item.unlockCondDesc ?? null };
     })
+    // 排序键依赖 id 形如 <主题>_band_<数字> 的前提（如 rogue_6_band_1）
     .sort((a, b) => Number(a.id.split('_').pop()) - Number(b.id.split('_').pop()));
 }
 
@@ -55,7 +58,7 @@ export function extractRecruitGroups(topicDetail) {
       id: gid,
       name: grp.name,
       desc: grp.desc,
-      slots: slots.map((s) => ({ classes: s.classes, rarityCap: s.rarityCap ?? null })),
+      slots: slots.map((s) => ({ classes: [...s.classes], rarityCap: s.rarityCap ?? null })),
     };
   });
 }
