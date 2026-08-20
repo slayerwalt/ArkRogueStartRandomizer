@@ -20,7 +20,7 @@ try {
 const theme = data?.themes[0] ?? null;
 const operators = data?.operators ?? [];
 
-const settings = ref<RollSettings>({ ...DEFAULT_SETTINGS });
+const settings = ref<RollSettings>({ ...DEFAULT_SETTINGS, rarities: [...DEFAULT_SETTINGS.rarities], excludes: [] });
 const pruneNotice = ref('');
 if (data) {
   const loaded = loadSettings(window.localStorage, new Set(operators.map((o) => o.id)));

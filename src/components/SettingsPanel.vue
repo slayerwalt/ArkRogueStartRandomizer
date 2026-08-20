@@ -21,7 +21,7 @@ function toggleRarity(r: number) {
   const has = props.modelValue.rarities.includes(r);
   const rarities = has
     ? props.modelValue.rarities.filter((x) => x !== r)
-    : [...props.modelValue.rarities, r].sort();
+    : [...props.modelValue.rarities, r].sort((a, b) => a - b);
   if (rarities.length === 0) return; // 至少保留一个星级
   update({ rarities });
 }
@@ -50,7 +50,7 @@ function removeExclude(id: string) {
 
 <template>
   <section class="settings">
-    <button class="settings-toggle" @click="open = !open">
+    <button class="settings-toggle" :aria-expanded="open" @click="open = !open">
       ⚙ 随机设置 {{ open ? '▲' : '▼' }}
     </button>
     <div v-if="open" class="settings-body">
@@ -75,7 +75,7 @@ function removeExclude(id: string) {
       </div>
       <div class="row exclude-box">
         <div>排除名单（{{ modelValue.excludes.length }}）：</div>
-        <input v-model="keyword" placeholder="输入干员名搜索并排除" />
+        <input v-model="keyword" aria-label="搜索干员" placeholder="输入干员名搜索并排除" />
         <ul v-if="searchResults.length" class="search-results">
           <li v-for="o in searchResults" :key="o.id">
             <button @click="addExclude(o.id)">＋ {{ o.name }}（{{ o.rarity }}星）</button>
@@ -84,7 +84,7 @@ function removeExclude(id: string) {
         <div v-if="excludedOperators.length" class="excluded-list">
           <span v-for="o in excludedOperators" :key="o.id" class="excluded-tag">
             {{ o.name }}
-            <button @click="removeExclude(o.id)">×</button>
+            <button :aria-label="`移除 ${o.name}`" @click="removeExclude(o.id)">×</button>
           </span>
         </div>
       </div>

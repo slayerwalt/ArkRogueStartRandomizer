@@ -27,6 +27,7 @@ function slotLabel(slot: SlotResult['slot']): string {
           <button
             v-if="withOperators"
             class="reroll"
+            aria-label="重摇该券位"
             title="重摇该券位"
             @click="emit('rerollSlot', i)"
           >↻</button>
