@@ -11,15 +11,11 @@ export const COMMON_OPERATORS: Record<number, string[]> = {
     'char_1045_svash2', // 凛御银灰
     'char_4228_closur', // 可露希尔
     'char_4087_ines', // 伊内丝
-    'char_249_mlyss', // 缪尔赛思
     'char_1050_chen3', // 赤刃明霄陈
     'char_4182_oblvns', // 丰川祥子
     'char_4064_mlynar', // 玛恩纳
     'char_4145_ulpia', // 乌尔比安
     'char_1043_leizi2', // 司霆惊蛰
-    'char_350_surtr', // 史尔特尔
-    'char_4037_demetr', // 贝洛内
-    'char_4116_blkkgt', // 锏
     'char_4230_mcnist', // 机械师
     'char_1044_hsgma2', // 斩业星熊
     'char_1048_orchd2', // 焰狐龙梓兰
@@ -31,14 +27,12 @@ export const COMMON_OPERATORS: Record<number, string[]> = {
     'char_450_necras', // 死芒
     'char_1052_kalts2', // 凯尔希·思衡托
     'char_4202_haruka', // 遥
-    'char_4195_radian', // 电弧
     'char_1042_phatm2', // 酒神
     'char_206_gnosis', // 灵知
     'char_291_aglina', // 安洁莉娜
     'char_1015_aglna2', // 予愿安洁莉娜
     'char_2027_wang', // 望
     'char_1041_angel2', // 新约能天使
-    'char_437_mizuki', // 水月
   ],
   5: [
     'char_4199_makiri', // 松桐
@@ -48,6 +42,7 @@ export const COMMON_OPERATORS: Record<number, string[]> = {
     'char_401_elysm', // 极境
     'char_102_texas', // 德克萨斯
     'char_4185_amoris', // 祐天寺若麦
+    'char_002_amiya', // 阿米娅
     'char_304_zebra', // 暴雨
     'char_4213_skybx', // 天空盒
     'char_1021_kroos2', // 寒芒克洛丝
