@@ -436,15 +436,36 @@ input[type='checkbox'] {
   margin-top: 4px;
 }
 
-/* ===== 开始随机主按钮：琥珀金圆角，未随机时大号 ===== */
+/* ===== 用法介绍弹窗 ===== */
+.intro-list {
+  margin: 0 0 16px;
+  padding-left: 20px;
+  color: var(--ink-dim);
+  font-size: 14px;
+  line-height: 1.8;
+}
+
+.intro-list li {
+  margin-bottom: 10px;
+}
+
+.intro-list strong {
+  color: var(--ink);
+}
+
+.intro-ok {
+  margin-bottom: 0;
+}
+
+/* ===== 开始随机主按钮：青色圆角，未随机时大号 ===== */
 .roll-button {
   width: 100%;
   padding: 20px;
   font-size: 20px;
   letter-spacing: 6px;
   text-indent: 6px;
-  background: linear-gradient(160deg, var(--hope) 0%, var(--hope-deep) 100%);
-  color: #14100a;
+  background: linear-gradient(160deg, var(--glow) 0%, var(--glow-deep) 100%);
+  color: #06201b;
   border: none;
   border-radius: 8px;
   cursor: pointer;
@@ -705,9 +726,9 @@ input[type='checkbox'] {
 }
 
 .reroll-all-button {
-  background: linear-gradient(160deg, #2b2416, #1c1810);
-  color: var(--hope);
-  box-shadow: inset 0 0 0 1px rgba(240, 182, 74, 0.5);
+  background: linear-gradient(160deg, #152420, #0e1a17);
+  color: var(--glow);
+  box-shadow: inset 0 0 0 1px rgba(53, 224, 196, 0.5);
 }
 
 .reroll-all-button:hover {

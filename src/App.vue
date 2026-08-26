@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
 import arknightsLogo from './assets/arknights-logo.svg';
+import IntroModal from './components/IntroModal.vue';
 import rawData from './data/rogue-data.json';
 import RecruitSlots from './components/RecruitSlots.vue';
 import SettingsPanel from './components/SettingsPanel.vue';
@@ -32,6 +33,24 @@ const operators = data?.operators ?? [];
 const settings = ref<RollSettings>(createDefaultSettings());
 /** 随机设置面板是否展开（由页眉左上角设置图标控制） */
 const settingsOpen = ref(false);
+/** 用法介绍弹窗：首次进入时弹出，关闭后记住不再弹出 */
+const INTRO_SEEN_KEY = 'rogue-start-intro-seen';
+const introOpen = ref(false);
+try {
+  introOpen.value = window.localStorage.getItem(INTRO_SEEN_KEY) !== '1';
+} catch {
+  introOpen.value = false;
+}
+
+function closeIntro() {
+  introOpen.value = false;
+  try {
+    window.localStorage.setItem(INTRO_SEEN_KEY, '1');
+  } catch {
+    // 存储不可用时静默忽略，下次仍会弹出
+  }
+}
+
 const pruneNotice = ref('');
 if (data) {
   const loaded = loadSettings(window.localStorage, new Set(operators.map((o) => o.id)));
@@ -155,6 +174,9 @@ function onRerollSlot(index: number) {
       </div>
     </template>
   </template>
+
+  <!-- 首次进入的用法介绍弹窗 -->
+  <IntroModal v-if="introOpen" @close="closeIntro" />
 
   <!-- 随机设置弹窗 -->
   <div v-if="settingsOpen" class="settings-overlay" @click.self="settingsOpen = false">
