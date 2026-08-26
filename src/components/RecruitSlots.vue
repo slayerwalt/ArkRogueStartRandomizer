@@ -16,6 +16,12 @@ function onAvatarError(id: string) {
   brokenAvatars.value = new Set(brokenAvatars.value).add(id);
 }
 
+/** 干员头像地址；加载失败或资源缺失时返回 undefined，降级为纯文字 */
+function avatarUrl(id: string): string | undefined {
+  if (brokenAvatars.value.has(id)) return undefined;
+  return operatorAvatarUrl(id);
+}
+
 function slotLabel(slot: SlotResult['slot']): string {
   const classes = slot.classes.map((c) => CLASS_CN[c] ?? c).join('、');
   return slot.rarityCap !== null ? `${classes}（最高${slot.rarityCap}星）` : classes;
@@ -44,9 +50,9 @@ function slotLabel(slot: SlotResult['slot']): string {
         <div v-if="s.empty" class="slot-empty">无可选干员，请调整范围</div>
         <div v-else-if="s.operator" class="slot-operator" :class="`rarity-${s.operator.rarity}`">
           <img
-            v-if="!brokenAvatars.has(s.operator.id)"
+            v-if="avatarUrl(s.operator.id)"
             class="slot-avatar"
-            :src="operatorAvatarUrl(s.operator.id)"
+            :src="avatarUrl(s.operator.id)"
             :alt="s.operator.name"
             loading="lazy"
             @error="onAvatarError(s.operator.id)"

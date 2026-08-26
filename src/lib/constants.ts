@@ -17,7 +17,20 @@ export const SUB_PROFESSION_CN: Record<string, string> = {
   ritualist: '巫役',
 };
 
-/** 干员头像地址（ArknightsAssets2 仓库的 jsDelivr 镜像，加载失败时前端隐藏图片降级为文字） */
-export function operatorAvatarUrl(id: string): string {
-  return `https://cdn.jsdelivr.net/gh/ArknightsAssets/ArknightsAssets2@cn/assets/dyn/arts/charavatars/${id}.png`;
+/**
+ * 干员头像（144px webp，打包进项目；原始图片来自 ArknightsAssets2，芳汀来自 PRTS）。
+ * 找不到对应头像时返回 undefined，前端降级为纯文字展示。
+ */
+const avatarModules = import.meta.glob<string>('../assets/avatars/*.webp', {
+  eager: true,
+  import: 'default',
+});
+const AVATARS: Record<string, string> = {};
+for (const [path, url] of Object.entries(avatarModules)) {
+  const id = path.slice(path.lastIndexOf('/') + 1, -'.webp'.length);
+  AVATARS[id] = url;
+}
+
+export function operatorAvatarUrl(id: string): string | undefined {
+  return AVATARS[id];
 }

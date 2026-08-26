@@ -18,6 +18,12 @@ function onAvatarError(id: string) {
   brokenAvatars.value = new Set(brokenAvatars.value).add(id);
 }
 
+/** 干员头像地址；加载失败或资源缺失时返回 undefined，降级为纯文字 */
+function avatarUrl(id: string): string | undefined {
+  if (brokenAvatars.value.has(id)) return undefined;
+  return operatorAvatarUrl(id);
+}
+
 function update(patch: Partial<RollSettings>) {
   emit('update:modelValue', { ...props.modelValue, ...patch });
 }
@@ -106,9 +112,9 @@ function toggleOperator(rarity: number, id: string, checked: boolean) {
           @change="toggleOperator(r, o.id, ($event.target as HTMLInputElement).checked)"
         />
         <img
-          v-if="!brokenAvatars.has(o.id)"
+          v-if="avatarUrl(o.id)"
           class="operator-avatar"
-          :src="operatorAvatarUrl(o.id)"
+          :src="avatarUrl(o.id)"
           :alt="o.name"
           loading="lazy"
           @error="onAvatarError(o.id)"
