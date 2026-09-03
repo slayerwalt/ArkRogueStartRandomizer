@@ -45,8 +45,18 @@ export interface Operator {
   bonusProfessions?: string[];
 }
 
+export interface GameDataSource {
+  repository: string;
+  commit: string | null;
+  /** 仅表示三个输入文件是否相对上游 commit 有改动 */
+  dirty: boolean | null;
+  dataVersion: string;
+  inputSha256: Record<string, string>;
+}
+
 export interface GameData {
   generatedAt: string;
+  source: GameDataSource;
   themes: Theme[];
   operators: Operator[];
 }

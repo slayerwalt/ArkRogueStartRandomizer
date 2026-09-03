@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { extractOperators, extractRecruitGroups, extractSquads } from '../scripts/lib/extract-core.mjs';
+import { extractOperators, extractRecruitGroups, extractSquads, normalizeRarity } from '../scripts/lib/extract-core.mjs';
 
 const fakeTopicDetail = {
   bandRef: {
@@ -122,6 +122,28 @@ describe('extractOperators', () => {
 
   it('空 charTable 返回空数组', () => {
     expect(extractOperators({})).toEqual([]);
+  });
+
+  it('兼容数字与 TIER_n 两种稀有度格式', () => {
+    expect(normalizeRarity(5, 'char_numeric')).toBe(6);
+    expect(normalizeRarity('TIER_6', 'char_tier')).toBe(6);
+    const table = {
+      char_tier: {
+        name: '字符串稀有度干员', profession: 'WARRIOR', subProfessionId: 'lord',
+        rarity: 'TIER_5', isNotObtainable: false,
+      },
+    };
+    expect(extractOperators(table)[0]).toMatchObject({ id: 'char_tier', rarity: 5, hopeCost: 2 });
+  });
+
+  it('遇到未知稀有度格式时抛错', () => {
+    const table = {
+      char_bad: {
+        name: '异常干员', profession: 'WARRIOR', subProfessionId: 'lord',
+        rarity: 'SIX_STAR', isNotObtainable: false,
+      },
+    };
+    expect(() => extractOperators(table)).toThrow(/rarity 格式未知/);
   });
 
   it('阿米娅特殊规则：职业改为医疗，附加近卫/术师减免职业', () => {

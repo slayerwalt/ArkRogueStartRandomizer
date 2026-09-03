@@ -1,5 +1,16 @@
 {
-  "generatedAt": "2026-08-20",
+  "generatedAt": "2026-09-04",
+  "source": {
+    "repository": "https://github.com/yuanyan3060/ArknightsGameResource",
+    "commit": "b2e8ab3ffd9e56d776f50b2dc32ee0d36c5a8ae5",
+    "dirty": false,
+    "dataVersion": "76.4.0",
+    "inputSha256": {
+      "gamedata/excel/character_table.json": "7e2e8604b176b0e26fcc1b884652f4995a0c1a1b63c711f9e012818011e28bdb",
+      "gamedata/excel/roguelike_topic_table.json": "a208dc5217730eafc8f78880c09483f9101c66c81a1ea7f37ed50c35c1e94947",
+      "gamedata/excel/data_version.txt": "67cceff4a59d13b313da7a5b0305010bb66000b1da83a1715c1645043d875805"
+    }
+  },
   "themes": [
     {
       "id": "rogue_6",

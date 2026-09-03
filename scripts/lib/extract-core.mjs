@@ -57,6 +57,21 @@ export const GROUP_SLOTS = {
   recruit_group_5: [{ classes: ['TANK'] }, { classes: ['CASTER'] }, { classes: ['MEDIC'] }],
 };
 
+/**
+ * ArknightsGameResource 使用 0～5，部分结构化数据仓库使用 TIER_1～TIER_6。
+ * 对外统一返回游戏内展示星级 1～6，未知格式直接报错，避免静默漏掉干员。
+ */
+export function normalizeRarity(value, operatorId = '未知干员') {
+  if (Number.isInteger(value) && value >= 0 && value <= 5) return value + 1;
+
+  if (typeof value === 'string') {
+    const match = /^TIER_([1-6])$/.exec(value);
+    if (match) return Number(match[1]);
+  }
+
+  throw new Error(`干员 ${operatorId} 的 rarity 格式未知: ${JSON.stringify(value)}`);
+}
+
 export function extractSquads(topicDetail) {
   const bases = Object.values(topicDetail.bandRef).filter((r) => r.itemId === r.normalBandId);
   return bases
@@ -102,11 +117,17 @@ export function extractRecruitGroups(topicDetail) {
 
 export function extractOperators(charTable) {
   return Object.entries(charTable)
-    .filter(([, c]) => ALL_CLASSES.includes(c.profession) && !c.isNotObtainable && c.rarity >= 2)
-    .map(([id, c]) => {
-      const rarity = c.rarity + 1;
+    .flatMap(([id, c]) => {
+      if (!ALL_CLASSES.includes(c.profession) || c.isNotObtainable) return [];
+
+      const rarity = normalizeRarity(c.rarity, id);
+      if (rarity < 3) return [];
+      if (typeof c.name !== 'string' || typeof c.subProfessionId !== 'string') {
+        throw new Error(`干员 ${id} 缺少名称或子职业数据`);
+      }
+
       const isAmiya = id === AMIYA_ID;
-      return {
+      return [{
         id,
         name: c.name,
         profession: isAmiya ? AMIYA_PROFESSION : c.profession,
@@ -115,7 +136,7 @@ export function extractOperators(charTable) {
         hopeCost: HOPE_COST[rarity] ?? 0,
         charDiscount: id === MECHANIST_ID ? MECHANIST_DISCOUNT : 0,
         ...(isAmiya ? { bonusProfessions: AMIYA_BONUS_PROFESSIONS } : {}),
-      };
+      }];
     })
     .sort((a, b) => a.id.localeCompare(b.id));
 }

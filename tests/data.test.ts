@@ -3,6 +3,17 @@ import { validateGameData } from '../src/lib/data';
 
 const valid = {
   generatedAt: '2026-08-20',
+  source: {
+    repository: 'https://github.com/yuanyan3060/ArknightsGameResource',
+    commit: 'b2e8ab3ffd9e56d776f50b2dc32ee0d36c5a8ae5',
+    dirty: false,
+    dataVersion: '76.4.0',
+    inputSha256: {
+      'gamedata/excel/character_table.json': 'a'.repeat(64),
+      'gamedata/excel/roguelike_topic_table.json': 'b'.repeat(64),
+      'gamedata/excel/data_version.txt': 'c'.repeat(64),
+    },
+  },
   themes: [
     {
       id: 'rogue_6',
@@ -23,6 +34,10 @@ describe('validateGameData', () => {
   });
   it('缺少干员时报中文错误', () => {
     expect(() => validateGameData({ ...valid, operators: [] })).toThrow(/数据文件/);
+  });
+  it('来源元数据不完整时报错', () => {
+    const bad = { ...valid, source: { ...valid.source, inputSha256: {} } };
+    expect(() => validateGameData(bad)).toThrow(/来源元数据/);
   });
   it('主题缺少分队或招募组合时报错', () => {
     const bad = { ...valid, themes: [{ ...valid.themes[0], squads: [] }] };
