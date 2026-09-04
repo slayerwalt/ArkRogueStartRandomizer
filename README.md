@@ -3,7 +3,7 @@
   <p>《明日方舟》集成战略开局随机器</p>
   <p>随机分队、初始招募组合与每张招募券的具体干员，在希望预算内尽量给出更高星的可用开局。</p>
   <p>
-    <a href="https://slayerwalt.github.io/ArkRogueStartRandomizer/"><strong>在线使用</strong></a>
+    <a href="https://ark.slayerwalt.cn/"><strong>在线使用</strong></a>
     ·
     <a href="#功能亮点">功能亮点</a>
     ·
@@ -48,7 +48,7 @@
 
 ## 使用说明
 
-1. 打开[在线页面](https://slayerwalt.github.io/ArkRogueStartRandomizer/)。
+1. 打开[在线页面](https://ark.slayerwalt.cn/)。
 2. 在页面右上角选择集成战略主题；目前可随机的主题为“沉沦者的黑流树海”。
 3. 如需调整干员池，打开左上角“设置”，按星级选择常见干员、全部干员或逐个勾选。
 4. 点击“开始随机”生成开局。生成后可以局部重摇，也可以点击“重roll！”重新生成全部结果。
