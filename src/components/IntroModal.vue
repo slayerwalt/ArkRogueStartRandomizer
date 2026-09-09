@@ -1,28 +1,28 @@
-<script setup lang="ts">
-const emit = defineEmits<{ close: [] }>();
-</script>
-
 <template>
-  <div class="settings-overlay" @click.self="emit('close')">
-    <div class="settings-modal intro-modal" role="dialog" aria-modal="true" aria-label="用法介绍">
-      <div class="settings-modal-head">
-        <span class="settings-modal-title">用法介绍</span>
-        <button class="settings-close" aria-label="关闭" @click="emit('close')">×</button>
-      </div>
-      <div class="settings-modal-body">
-        <ul class="intro-list">
-          <li>
-            <strong>选择肉鸽主题</strong>：页面右上角的下拉框可以选择要随机开局的集成战略主题（目前仅开放「沉沦者的黑流树海」）。
-          </li>
-          <li>
-            <strong>设置干员范围</strong>：页面左上角的「设置」可以调整随机干员范围。默认已勾选常见的开局干员，避免随机到冷门干员难以开局，可按需自行勾选。
-          </li>
-          <li>
-            <strong>开始随机</strong>：点击下方「开始随机」生成开局；分队、招募组合、单个券位都可以单独重摇，不满意就点「重roll！」。
-          </li>
-        </ul>
-        <button class="roll-button intro-ok" @click="emit('close')">知道了</button>
-      </div>
-    </div>
+  <div class="help-content">
+    <p>
+      为集成战略生成一套开局分队、招募组合与干员。随机会在希望预算内尽量选择高星干员。
+    </p>
+    <ol>
+      <li>
+        <h3>选好主题与范围</h3>
+        <p>
+          目前开放「沉沦者的黑流树海」。随机范围默认采用常见开局干员，可在“调整范围”中自定义。
+        </p>
+      </li>
+      <li>
+        <h3>生成你的开局</h3>
+        <p>点击“开始随机”。希望预算包含分队加成，干员消耗已计入对应减免。</p>
+      </li>
+      <li>
+        <h3>调整不满意的部分</h3>
+        <p>
+          重抽分队会保留招募组合，重抽组合会保留分队，两者都会重新生成全部券位。重抽此券只更新一个券位。
+        </p>
+      </li>
+    </ol>
+    <p class="help-note">
+      重抽可能得到相同结果。调整范围不会改动已有阵容；要让全部干员应用新范围，请重新随机全部。
+    </p>
   </div>
 </template>

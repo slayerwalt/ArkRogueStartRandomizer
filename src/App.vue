@@ -1,193 +1,349 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue';
+import { computed, ref } from 'vue';
 import arknightsLogo from './assets/arknights-logo.svg';
-import IntroModal from './components/IntroModal.vue';
 import rawData from './data/rogue-data.json';
+import AppIcon from './components/AppIcon.vue';
+import BaseDialog from './components/BaseDialog.vue';
+import IntroModal from './components/IntroModal.vue';
 import RecruitSlots from './components/RecruitSlots.vue';
 import SettingsPanel from './components/SettingsPanel.vue';
 import SquadCard from './components/SquadCard.vue';
+import { useRandomizer } from './composables/useRandomizer';
+import { useRollSettings } from './composables/useRollSettings';
 import { validateGameData } from './lib/data';
-import { emptyPoolRarities } from './lib/pool';
-import { rerollGroup, rerollSlot, rerollSquad, rollSlotsFor, rollStart } from './lib/roll';
-import { createDefaultSettings, loadSettings, saveSettings } from './lib/settings';
 import { ROGUE_THEMES } from './lib/themes';
-import type { GameData, RollResult, RollSettings } from './lib/types';
+import { POOL_RARITIES, type GameData } from './lib/types';
 
 let data: GameData | null = null;
-const loadError = ref('');
+let loadError = '';
 try {
   data = validateGameData(rawData);
-} catch (e) {
-  loadError.value = (e as Error).message;
+} catch {
+  loadError = '游戏数据暂时无法读取，请刷新页面重试。';
 }
-
-/** 页面顶部选中的肉鸽主题；默认黑流树海（目前唯一已开放的主题） */
+const operators = data?.operators ?? [];
 const selectedThemeId = ref('rogue_6');
 const selectedTheme = computed(
-  () => ROGUE_THEMES.find((t) => t.id === selectedThemeId.value) ?? ROGUE_THEMES[0],
+  () => ROGUE_THEMES.find((t) => t.id === selectedThemeId.value)!,
 );
-/** 当前选中主题的游戏数据；未提取数据的主题为 null（显示开发中占位） */
-const theme = computed(() => data?.themes.find((t) => t.id === selectedThemeId.value) ?? null);
-const operators = data?.operators ?? [];
-
-const settings = ref<RollSettings>(createDefaultSettings());
-/** 随机设置面板是否展开（由页眉左上角设置图标控制） */
-const settingsOpen = ref(false);
-/** 用法介绍弹窗：首次进入时弹出，关闭后记住不再弹出 */
-const INTRO_SEEN_KEY = 'rogue-start-intro-seen';
-const introOpen = ref(false);
-try {
-  introOpen.value = window.localStorage.getItem(INTRO_SEEN_KEY) !== '1';
-} catch {
-  introOpen.value = false;
+const theme = computed(() =>
+  selectedTheme.value.available
+    ? (data?.themes.find((t) => t.id === selectedThemeId.value) ?? null)
+    : null,
+);
+const activeDialog = ref<'settings' | 'themes' | 'help' | null>(null);
+const { settings, storageNotice, pruneNotice } = useRollSettings(
+  new Set(operators.map((o) => o.id)),
+);
+const {
+  result,
+  blockReason,
+  usedHope,
+  remainingHope,
+  roll,
+  rollSquad,
+  rollGroup,
+  rollSlot,
+} = useRandomizer(theme, operators, settings);
+const announcement = ref('');
+const isBlocked = computed(() => Boolean(blockReason.value));
+function run(action: () => void, message: string) {
+  if (isBlocked.value) return;
+  action();
+  announcement.value = `${message}。剩余 ${remainingHope.value} 希望。${result.value?.slots.map((s, i) => `券位 ${i + 1}：${s.operator?.name ?? '暂无可选干员'}`).join('；')}`;
 }
-
-function closeIntro() {
-  introOpen.value = false;
-  try {
-    window.localStorage.setItem(INTRO_SEEN_KEY, '1');
-  } catch {
-    // 存储不可用时静默忽略，下次仍会弹出
-  }
-}
-
-const pruneNotice = ref('');
-if (data) {
-  const loaded = loadSettings(window.localStorage, new Set(operators.map((o) => o.id)));
-  settings.value = loaded.settings;
-  if (loaded.pruned > 0) {
-    pruneNotice.value = `已自动移除 ${loaded.pruned} 个数据中不存在的干员`;
-    saveSettings(window.localStorage, settings.value);
-  }
-}
-watch(settings, (s) => saveSettings(window.localStorage, s), { deep: true });
-
-const result = ref<RollResult | null>(null);
-/** 结果版本号：每次阵容变化自增，用作结果区的 key 以重放登场动画 */
-const resultVersion = ref(0);
-watch(result, () => resultVersion.value++);
-/** 随机范围为空等导致无法随机时的提示 */
-const rollNotice = ref('');
-
-/** 有星级的随机范围为空时返回提示文案，否则返回空串 */
-function poolBlockReason(): string {
-  const missing = emptyPoolRarities(settings.value);
-  return missing.length ? `请先在随机设置中为 ${missing.join('、')} 星选择随机范围` : '';
-}
-
-function roll() {
-  if (!theme.value) return;
-  const reason = poolBlockReason();
-  if (reason) {
-    rollNotice.value = reason;
-    return;
-  }
-  rollNotice.value = '';
-  result.value = rollStart(theme.value, operators, settings.value);
-}
-
-function onRerollSquad() {
-  if (!theme.value || !result.value) return;
-  // 重摇分队后减免与预算改变，所有券位重新随机（组合保持不变）
-  const squad = rerollSquad(theme.value);
-  result.value = rollSlotsFor(operators, settings.value, squad, result.value.group);
-}
-
-function onRerollGroup() {
-  if (!theme.value || !result.value) return;
-  // 重摇招募组合，所有券位重新随机（分队保持不变）
-  const group = rerollGroup(theme.value);
-  result.value = rollSlotsFor(operators, settings.value, result.value.squad, group);
-}
-
-function onRerollSlot(index: number) {
-  if (!result.value) return;
-  const { slots, squad, initialHope } = result.value;
-  const budget = initialHope - slots.reduce((sum, s, i) => (i === index ? sum : sum + s.hopeCost), 0);
-  const newSlots = slots.slice();
-  newSlots[index] = rerollSlot(newSlots[index].slot, operators, settings.value, squad, budget);
-  result.value = { ...result.value, slots: newSlots };
+function selectTheme(id: string) {
+  selectedThemeId.value = id;
+  activeDialog.value = null;
+  announcement.value = '';
 }
 </script>
 
 <template>
-  <div class="page-bg" aria-hidden="true">
-    <img :key="selectedTheme.id" :src="selectedTheme.banner" alt="" />
-  </div>
-
+  <a href="#main" class="skip-link">跳转到开局工作台</a>
   <header class="site-header">
-    <div class="site-header-inner">
-      <button
-        class="settings-icon"
-        aria-haspopup="dialog"
-        aria-label="随机设置"
-        title="随机设置"
-        @click="settingsOpen = true"
-      >
-        <span class="settings-icon-glyph" aria-hidden="true">⚙</span>
-        <span>设置</span>
-      </button>
-      <div class="site-brand">
-        <img class="site-logo" :src="arknightsLogo" alt="明日方舟" />
-        <span class="site-divider">|</span>
-        <span class="site-title">集成战略随机开局</span>
+    <div class="header-inner">
+      <div class="brand">
+        <span class="brand-symbol"><AppIcon name="shuffle" /></span>
+        <div>
+          <span class="brand-name">开局工作台</span>
+          <span class="brand-subtitle">明日方舟 · 集成战略</span>
+        </div>
       </div>
-      <select v-model="selectedThemeId" class="theme-select" aria-label="选择肉鸽主题">
-        <option v-for="t in ROGUE_THEMES" :key="t.id" :value="t.id">{{ t.name }}</option>
-      </select>
+      <nav aria-label="工具导航">
+        <button
+          class="nav-button"
+          aria-haspopup="dialog"
+          @click="activeDialog = 'themes'"
+        >
+          <AppIcon name="grid" />
+          切换主题
+        </button>
+        <button
+          class="nav-button"
+          aria-haspopup="dialog"
+          @click="activeDialog = 'help'"
+        >
+          <AppIcon name="help" />
+          使用说明
+        </button>
+      </nav>
     </div>
   </header>
 
-  <div class="theme-showcase">
-    <img :key="selectedTheme.id" :src="selectedTheme.showcase" :alt="selectedTheme.name" />
-  </div>
-
-  <div v-if="loadError" class="error">{{ loadError }}</div>
-
-  <div v-else-if="!selectedTheme.available || !theme" class="wip-card">
-    <div class="wip-mark" aria-hidden="true">◆</div>
-    <div class="wip-title">正在开发中</div>
-    <div class="wip-desc">「{{ selectedTheme.name }}」的开局随机尚未开放，敬请期待</div>
-  </div>
-
-  <template v-else>
-    <p v-if="pruneNotice" class="notice">{{ pruneNotice }}</p>
-    <button v-if="!result" class="roll-button" @click="roll">开始随机</button>
-    <p v-if="rollNotice" class="notice">{{ rollNotice }}</p>
-    <template v-if="result">
-      <!-- key 绑定结果版本号，重roll 后重新挂载以重放登场动画 -->
-      <div :key="resultVersion" class="result-area">
-        <div class="hope-bar">
-          初始希望 <strong>{{ result.initialHope }}</strong>，本局消耗
-          <strong>{{ result.slots.reduce((s, sl) => s + sl.hopeCost, 0) }}</strong>
-        </div>
-        <SquadCard :squad="result.squad" @reroll="onRerollSquad" />
-        <RecruitSlots
-          :group="result.group"
-          :slots="result.slots"
-          @reroll-slot="onRerollSlot"
-          @reroll-group="onRerollGroup"
-        />
-        <div class="action-bar">
-          <button class="reroll-all-button" @click="roll">重roll！</button>
-        </div>
+  <main id="main" class="workspace">
+    <div class="page-heading">
+      <div>
+        <p class="eyebrow">ROGUE START / 随机开局</p>
+        <h1>让下一局，有点不一样。</h1>
       </div>
-    </template>
-  </template>
-
-  <!-- 首次进入的用法介绍弹窗 -->
-  <IntroModal v-if="introOpen" @close="closeIntro" />
-
-  <!-- 随机设置弹窗 -->
-  <div v-if="settingsOpen" class="settings-overlay" @click.self="settingsOpen = false">
-    <div class="settings-modal" role="dialog" aria-modal="true" aria-label="随机设置">
-      <div class="settings-modal-head">
-        <span class="settings-modal-title">随机设置</span>
-        <button class="settings-close" aria-label="关闭" @click="settingsOpen = false">×</button>
-      </div>
-      <div class="settings-modal-body">
-        <SettingsPanel v-model="settings" :operators="operators" />
-      </div>
+      <span class="page-caption">选好范围，剩下的交给随机。</span>
     </div>
-  </div>
+    <section class="theme-banner" aria-label="当前肉鸽主题">
+      <div class="theme-copy">
+        <div class="theme-status">
+          <span
+            :class="['status-dot', { unavailable: !theme }]"
+            aria-hidden="true"
+          ></span>
+          {{ theme ? '当前可用' : '尚未开放' }}
+          <span class="theme-index">
+            THEME / 0{{
+              ROGUE_THEMES.findIndex((t) => t.id === selectedThemeId) + 1
+            }}
+          </span>
+        </div>
+        <h2>{{ selectedTheme.name }}</h2>
+        <p>
+          {{
+            theme
+              ? '从一支分队开始，走进未知的树海。'
+              : '先看看这片世界，随机功能将在后续开放。'
+          }}
+        </p>
+      </div>
+      <img
+        class="theme-art"
+        :src="selectedTheme.showcase"
+        :alt="selectedTheme.name + '主题插图'"
+        width="560"
+        height="240"
+      />
+    </section>
+
+    <div v-if="loadError" class="state-panel" role="alert">
+      <h2>暂时无法开始</h2>
+      <p>{{ loadError }}</p>
+    </div>
+    <template v-else-if="theme">
+      <section class="pool-summary" aria-label="当前随机范围">
+        <div>
+          <span class="pool-icon"><AppIcon name="sliders" /></span>
+          <div>
+            <strong>我的随机范围</strong>
+            <p>
+              <span v-for="r in POOL_RARITIES" :key="r" class="pool-count">
+                {{ r }} 星 {{ settings.pool[r]?.length ?? 0 }} 名
+              </span>
+              <span class="summary-extra">三星固定参与</span>
+            </p>
+          </div>
+        </div>
+        <button
+          class="button secondary"
+          aria-haspopup="dialog"
+          @click="activeDialog = 'settings'"
+        >
+          调整范围
+          <AppIcon name="chevron" />
+        </button>
+      </section>
+      <p v-if="storageNotice || pruneNotice" class="notice" role="status">
+        {{ [storageNotice, pruneNotice].filter(Boolean).join(' ') }}
+      </p>
+      <section class="results-section" aria-labelledby="result-title">
+        <div class="results-toolbar">
+          <div>
+            <p class="eyebrow">YOUR NEXT RUN</p>
+            <h2 id="result-title">
+              {{ result ? '这一次的开局' : '准备好出发了吗？' }}
+            </h2>
+          </div>
+          <button
+            class="button primary roll-button"
+            :disabled="isBlocked"
+            :aria-describedby="isBlocked ? 'pool-warning' : undefined"
+            @click="run(roll, '已生成新开局')"
+          >
+            <AppIcon name="shuffle" />
+            {{ result ? '重新随机全部' : '开始随机' }}
+            <AppIcon name="arrow" />
+          </button>
+        </div>
+        <div
+          v-if="blockReason"
+          id="pool-warning"
+          class="inline-warning warning-action"
+          role="status"
+        >
+          <span>{{ blockReason }}</span>
+          <button class="text-button" @click="activeDialog = 'settings'">
+            去调整范围
+            <AppIcon name="arrow" />
+          </button>
+        </div>
+        <div class="hope-strip" aria-label="希望预算">
+          <span class="hope-label">希望预算</span>
+          <dl>
+            <div>
+              <dt>初始</dt>
+              <dd>{{ result?.initialHope ?? '—' }}</dd>
+            </div>
+            <div>
+              <dt>已用</dt>
+              <dd>{{ result ? usedHope : '—' }}</dd>
+            </div>
+            <div class="hope-remaining">
+              <dt>剩余</dt>
+              <dd>{{ result ? remainingHope : '—' }}</dd>
+            </div>
+          </dl>
+          <span class="hope-note">按分队与干员减免计算</span>
+        </div>
+        <template v-if="result">
+          <div class="context-grid">
+            <SquadCard
+              :squad="result.squad"
+              :disabled="isBlocked"
+              @reroll="run(rollSquad, '已重抽分队和全部券位')"
+            />
+            <section class="context-card group-card">
+              <div class="section-top">
+                <span class="eyebrow">招募组合</span>
+                <button
+                  class="text-button"
+                  :disabled="isBlocked"
+                  @click="run(rollGroup, '已重抽招募组合和全部券位')"
+                >
+                  <AppIcon name="shuffle" />
+                  重抽组合
+                </button>
+              </div>
+              <h3>{{ result.group.name }}</h3>
+              <p>{{ result.group.desc }}</p>
+              <span class="group-tag">
+                {{ result.slots.length }} 张初始招募券
+              </span>
+            </section>
+          </div>
+          <div class="roster-heading">
+            <h2>开局干员</h2>
+            <span>想换一位？试试重抽此券。</span>
+          </div>
+          <RecruitSlots
+            :slots="result.slots"
+            :disabled="isBlocked"
+            @reroll-slot="
+              (i) => run(() => rollSlot(i), `已重抽第 ${i + 1} 个券位`)
+            "
+            @settings="activeDialog = 'settings'"
+          />
+          <p class="result-footnote">
+            范围调整仅影响后续随机。重抽分队或组合会重新生成全部券位。
+          </p>
+        </template>
+        <div v-else class="welcome-panel">
+          <div class="welcome-symbol"><AppIcon name="shuffle" /></div>
+          <h3>你的下一套阵容，尚待揭晓。</h3>
+          <p>随机一支分队、一组招募券，和属于这一局的干员。</p>
+          <div class="welcome-steps">
+            <span>
+              <b>01</b>
+              选择干员范围
+            </span>
+            <AppIcon name="chevron" />
+            <span>
+              <b>02</b>
+              生成随机开局
+            </span>
+            <AppIcon name="chevron" />
+            <span>
+              <b>03</b>
+              重抽，直到满意
+            </span>
+          </div>
+        </div>
+      </section>
+    </template>
+    <section v-else class="state-panel">
+      <span class="eyebrow">COMING SOON</span>
+      <h2>这段旅程，还在准备中。</h2>
+      <p>
+        「{{ selectedTheme.name }}」的随机开局尚未开放。
+        <br />
+        你可以先前往黑流树海，开始一场新的冒险。
+      </p>
+      <button class="button primary" @click="selectTheme('rogue_6')">
+        前往黑流树海
+        <AppIcon name="arrow" />
+      </button>
+    </section>
+    <footer class="site-footer">
+      <span class="footer-brand">
+        <img :src="arknightsLogo" alt="明日方舟" width="78" height="24" />
+        集成战略开局随机器
+      </span>
+      <span>非官方玩家工具 · 祝你开局顺利</span>
+    </footer>
+    <p class="sr-only" role="status" aria-live="polite" aria-atomic="true">
+      {{ announcement }}
+    </p>
+  </main>
+
+  <BaseDialog
+    v-if="activeDialog"
+    :title="
+      activeDialog === 'settings'
+        ? '调整随机范围'
+        : activeDialog === 'themes'
+          ? '选择你的旅程'
+          : '使用说明'
+    "
+    :drawer="activeDialog === 'settings'"
+    @close="activeDialog = null"
+  >
+    <template v-if="activeDialog === 'settings'">
+      <SettingsPanel v-model="settings" :operators="operators" />
+      <p v-if="storageNotice" class="inline-warning" role="status">
+        {{ storageNotice }}
+      </p>
+    </template>
+    <div v-else-if="activeDialog === 'themes'" class="theme-grid">
+      <button
+        v-for="t in ROGUE_THEMES"
+        :key="t.id"
+        class="theme-option"
+        :aria-pressed="selectedThemeId === t.id"
+        @click="selectTheme(t.id)"
+      >
+        <img :src="t.showcase" alt="" width="280" height="120" loading="lazy" />
+        <span class="theme-option-name">
+          {{ t.name }}
+          <AppIcon v-if="selectedThemeId === t.id" name="check" />
+        </span>
+        <span class="theme-option-status">
+          {{ t.available ? '可用 · 开始探索' : '尚未开放 · 可浏览' }}
+        </span>
+      </button>
+    </div>
+    <IntroModal v-else />
+    <template #footer>
+      <span v-if="activeDialog === 'settings'">
+        {{ storageNotice ? '仅保存于本次会话' : '设置自动保存' }}
+      </span>
+      <button class="button primary" @click="activeDialog = null">
+        {{ activeDialog === 'settings' ? '完成' : '返回工作台' }}
+      </button>
+    </template>
+  </BaseDialog>
 </template>

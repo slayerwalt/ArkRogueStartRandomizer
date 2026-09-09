@@ -1,0 +1,25 @@
+:root {
+  color-scheme: light;
+  --background: #f5f6f8;
+  --surface: #fff;
+  --ink: #17212f;
+  --muted: #667080;
+  --line: #e2e6ec;
+  --primary: #335cff;
+  --primary-hover: #2446d4;
+  --primary-soft: #eef2ff;
+  --hope: #985509;
+  --hope-soft: #fff5e5;
+  --radius: 14px;
+  --radius-small: 8px;
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --r6: #a75209;
+  --r5: #82600a;
+  --r4: #7950ad;
+  --r3: #32669c;
+}
