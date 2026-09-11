@@ -1,14 +1,14 @@
 {
-  "generatedAt": "2026-09-04",
+  "generatedAt": "2026-09-10",
   "source": {
     "repository": "https://github.com/yuanyan3060/ArknightsGameResource",
-    "commit": "b2e8ab3ffd9e56d776f50b2dc32ee0d36c5a8ae5",
+    "commit": "bb48105cf738b41648c0a9dbb58bfbc6541e0a81",
     "dirty": false,
-    "dataVersion": "76.4.0",
+    "dataVersion": "77.0.0",
     "inputSha256": {
-      "gamedata/excel/character_table.json": "7e2e8604b176b0e26fcc1b884652f4995a0c1a1b63c711f9e012818011e28bdb",
-      "gamedata/excel/roguelike_topic_table.json": "a208dc5217730eafc8f78880c09483f9101c66c81a1ea7f37ed50c35c1e94947",
-      "gamedata/excel/data_version.txt": "67cceff4a59d13b313da7a5b0305010bb66000b1da83a1715c1645043d875805"
+      "gamedata/excel/character_table.json": "ae68a40287a19da9dc0cdfa828e61cc9ea613cfb00c262468d99faaedc4ebe6d",
+      "gamedata/excel/roguelike_topic_table.json": "865814b675758fb23bcd1c3331e8aa320345f34ccb06ca0bcfa219b60a0bc27e",
+      "gamedata/excel/data_version.txt": "f13795db7608bff8a6d26fd0f4e1479a9dd5b9e570281abe32050cbe2640a92f"
     }
   },
   "themes": [
@@ -337,7 +337,10 @@
       "rarity": 5,
       "hopeCost": 2,
       "charDiscount": 0,
-      "bonusProfessions": ["WARRIOR", "CASTER"]
+      "bonusProfessions": [
+        "WARRIOR",
+        "CASTER"
+      ]
     },
     {
       "id": "char_003_kalts",
@@ -3485,6 +3488,33 @@
       "name": "响石",
       "profession": "TANK",
       "subProfession": "primprotector",
+      "rarity": 5,
+      "hopeCost": 2,
+      "charDiscount": 0
+    },
+    {
+      "id": "char_4217_makoto",
+      "name": "结城理",
+      "profession": "SPECIAL",
+      "subProfession": "dollkeeper",
+      "rarity": 6,
+      "hopeCost": 6,
+      "charDiscount": 0
+    },
+    {
+      "id": "char_4218_aigis",
+      "name": "埃癸斯",
+      "profession": "SNIPER",
+      "subProfession": "skybreaker",
+      "rarity": 5,
+      "hopeCost": 2,
+      "charDiscount": 0
+    },
+    {
+      "id": "char_4219_yukari",
+      "name": "岳羽由加莉",
+      "profession": "SUPPORT",
+      "subProfession": "supportiveranger",
       "rarity": 5,
       "hopeCost": 2,
       "charDiscount": 0
