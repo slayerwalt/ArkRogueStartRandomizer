@@ -10,6 +10,7 @@
   --primary-soft: #eef2ff;
   --hope: #985509;
   --hope-soft: #fff5e5;
+  --content-width: 680px;
   --radius: 14px;
   --radius-small: 8px;
   --space-1: 4px;
@@ -18,8 +19,8 @@
   --space-4: 16px;
   --space-6: 24px;
   --space-8: 32px;
-  --r6: #a75209;
-  --r5: #82600a;
-  --r4: #7950ad;
-  --r3: #32669c;
+  --r6: #e88425;
+  --r5: #d4ab14;
+  --r4: #a16bd3;
+  --r3: #5798db;
 }

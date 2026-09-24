@@ -1,9 +1,9 @@
 <script setup lang="ts">
-import { ref, watch } from 'vue';
+import { computed, ref, watch } from 'vue';
 import { CLASS_CN } from '../lib/constants';
 import type { SlotResult } from '../lib/types';
 import AppIcon from './AppIcon.vue';
-import OperatorAvatar from './OperatorAvatar.vue';
+import OperatorPortrait from './OperatorPortrait.vue';
 const props = defineProps<{
   slot: SlotResult;
   index: number;
@@ -11,6 +11,9 @@ const props = defineProps<{
 }>();
 const emit = defineEmits<{ reroll: []; settings: [] }>();
 const content = ref<HTMLElement>();
+const ticketLabel = computed(
+  () => `${props.slot.slot.classes.map((c) => CLASS_CN[c] ?? c).join(' / ')}招募券${props.slot.slot.rarityCap === null ? '' : `，最高 ${props.slot.slot.rarityCap} 星`}`,
+);
 watch(
   () => props.slot,
   () => {
@@ -32,51 +35,19 @@ watch(
 );
 </script>
 <template>
-  <article class="recruit-card" :class="`rarity-${slot.operator?.rarity ?? 0}`">
-    <header class="recruit-header">
-      <span class="ticket-number">0{{ index + 1 }}</span>
-      <span>
-        {{ slot.slot.classes.map((c) => CLASS_CN[c] ?? c).join(' / ') }}券
-        <span v-if="slot.slot.rarityCap !== null" class="cap-label">
-          最高 {{ slot.slot.rarityCap }} 星
-        </span>
-      </span>
-    </header>
-    <div ref="content" class="recruit-content">
-      <template v-if="slot.operator">
-        <OperatorAvatar :id="slot.operator.id" :name="slot.operator.name" />
-        <div class="operator-details">
-          <span class="rarity-text">{{ slot.operator.rarity }} 星干员</span>
-          <h3>{{ slot.operator.name }}</h3>
-          <span class="profession-label">
-            {{ CLASS_CN[slot.operator.profession] ?? slot.operator.profession }}
-          </span>
-        </div>
-        <div class="operator-cost">
-          <span>招募消耗</span>
-          <strong>
-            {{ slot.hopeCost }}
-            <small>希望</small>
-          </strong>
-        </div>
-      </template>
-      <div v-else class="slot-empty">
-        <AppIcon name="search" />
-        <h3>暂无可选干员</h3>
-        <p>当前范围与希望预算下，没有符合此券位的干员。</p>
-        <button class="text-button" @click="emit('settings')">
-          调整随机范围
-        </button>
-      </div>
-    </div>
-    <button
-      class="slot-reroll"
-      :disabled="disabled"
-      :aria-label="`重抽第 ${index + 1} 个券位`"
-      @click="emit('reroll')"
-    >
-      <AppIcon name="shuffle" />
-      重抽此券
+  <article class="recruit-slot" :class="{ empty: !slot.operator }" :aria-label="`第 ${index + 1} 个券位：${ticketLabel}`">
+    <button v-if="slot.operator" ref="content" class="operator-tile"
+      :disabled="disabled" :title="`${ticketLabel} · 点击重抽`"
+      :aria-label="`重抽第 ${index + 1} 个券位，当前为${slot.operator.name}，${slot.operator.rarity}星`"
+      @click="emit('reroll')">
+      <OperatorPortrait :operator="slot.operator" />
     </button>
+    <div v-else ref="content" class="slot-empty">
+      <AppIcon name="search" />
+      <h3>暂无可选干员</h3>
+      <p>当前范围内，没有符合此券位招募条件的干员。</p>
+      <button class="text-button" @click="emit('settings')">调整随机范围</button>
+      <button class="text-button" :disabled="disabled" @click="emit('reroll')">重抽此券位</button>
+    </div>
   </article>
 </template>

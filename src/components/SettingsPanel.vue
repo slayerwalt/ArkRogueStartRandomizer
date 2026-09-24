@@ -38,6 +38,15 @@ const filtered = computed(() =>
       (!onlySelected.value || selected.value.has(o.id)),
   ),
 );
+const groups = computed(() =>
+  Object.entries(CLASS_CN)
+    .map(([id, name]) => ({
+      id,
+      name,
+      operators: filtered.value.filter((o) => o.profession === id),
+    }))
+    .filter((group) => group.operators.length > 0),
+);
 function update(ids: string[]) {
   emit('update:modelValue', {
     pool: { ...props.modelValue.pool, [rarity.value]: ids },
@@ -121,22 +130,32 @@ function resetFilters() {
   <p v-if="!selected.size" class="inline-warning">
     此星级范围为空，请至少选择一名干员后再随机。
   </p>
-  <div v-if="filtered.length" class="operator-grid">
-    <label
-      v-for="o in filtered"
-      :key="o.id"
-      class="operator-option"
-      :class="{ selected: selected.has(o.id) }"
+  <div v-if="filtered.length" class="operator-groups">
+    <section
+      v-for="group in groups"
+      :key="group.id"
+      class="operator-group"
+      :aria-labelledby="`operator-group-${group.id}`"
     >
-      <input
-        type="checkbox"
-        :checked="selected.has(o.id)"
-        :aria-label="o.name"
-        @change="toggle(o.id)"
-      />
-      <OperatorAvatar :id="o.id" :name="o.name" lazy />
-      <span>{{ o.name }}</span>
-    </label>
+      <div class="operator-group-heading">
+        <h3 :id="`operator-group-${group.id}`">{{ group.name }}</h3>
+        <span>{{ group.operators.length }} 名</span>
+      </div>
+      <div class="operator-grid">
+        <button
+          v-for="o in group.operators"
+          :key="o.id"
+          type="button"
+          class="operator-option"
+          :aria-pressed="selected.has(o.id)"
+          :aria-label="o.name"
+          @click="toggle(o.id)"
+        >
+          <OperatorAvatar :id="o.id" :name="o.name" lazy />
+          <span class="operator-option-name">{{ o.name }}</span>
+        </button>
+      </div>
+    </section>
   </div>
   <div v-else class="filter-empty">
     <AppIcon name="search" />

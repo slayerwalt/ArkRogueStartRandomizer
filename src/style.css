@@ -102,9 +102,9 @@ p {
   border-bottom: 1px solid var(--line);
 }
 .header-inner {
-  max-width: 1184px;
+  max-width: var(--content-width);
   margin: auto;
-  padding: 18px 32px;
+  padding: 18px 24px;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -116,6 +116,7 @@ p {
   gap: 12px;
 }
 .brand-symbol {
+  flex: 0 0 auto;
   width: 40px;
   height: 40px;
   display: grid;
@@ -133,11 +134,7 @@ p {
   font-weight: 700;
   display: block;
   letter-spacing: 0.5px;
-}
-.brand-subtitle {
-  font-size: 11px;
-  color: var(--muted);
-  display: block;
+  white-space: nowrap;
 }
 nav {
   display: flex;
@@ -160,27 +157,9 @@ nav {
   color: var(--ink);
 }
 .workspace {
-  max-width: 1184px;
+  max-width: var(--content-width);
   margin: auto;
-  padding: 36px 32px 0;
-}
-.page-heading {
-  display: flex;
-  align-items: end;
-  justify-content: space-between;
-  gap: 20px;
-  margin-bottom: 26px;
-}
-.page-heading h1 {
-  font-size: 29px;
-  letter-spacing: -0.7px;
-  margin-top: 8px;
-  font-weight: 650;
-}
-.page-caption {
-  color: var(--muted);
-  font-size: 13px;
-  padding-bottom: 4px;
+  padding: 24px 24px 0;
 }
 .theme-banner {
   position: relative;
@@ -200,14 +179,10 @@ nav {
   flex: 1;
   min-width: 0;
 }
-.theme-copy h2 {
+.theme-copy h1 {
   font-size: 25px;
   letter-spacing: 0.7px;
-  margin: 13px 0 6px;
-}
-.theme-copy p {
-  color: #c7d4d5;
-  font-size: 13px;
+  margin-top: 13px;
 }
 .theme-status {
   display: flex;
@@ -280,7 +255,11 @@ nav {
   color: var(--muted);
 }
 .results-section {
-  margin-top: 36px;
+  margin-top: 24px;
+  padding: 24px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
 }
 .results-toolbar {
   display: flex;
@@ -291,7 +270,6 @@ nav {
 }
 .results-toolbar h2 {
   font-size: 23px;
-  margin-top: 5px;
 }
 .roll-button {
   min-width: 190px;
@@ -299,64 +277,29 @@ nav {
 .roll-button .icon:last-child {
   margin-left: 18px;
 }
-.hope-strip {
-  display: flex;
-  align-items: center;
-  gap: 24px;
-  border-top: 1px solid var(--line);
-  border-bottom: 1px solid var(--line);
-  padding: 13px 0;
-  margin-bottom: 20px;
-}
-.hope-label {
-  font-size: 12px;
-  color: var(--muted);
-}
-.hope-strip dl {
-  display: flex;
-  gap: 28px;
-  margin: 0;
-}
-.hope-strip dl > div {
-  display: flex;
-  align-items: baseline;
-  gap: 10px;
-}
-.hope-strip dt {
-  font-size: 12px;
-  color: var(--muted);
-}
-.hope-strip dd {
-  font-size: 21px;
-  font-weight: 650;
-  font-variant-numeric: tabular-nums;
-  line-height: 1.2;
-  margin: 0;
-}
-.hope-strip .hope-remaining {
-  color: var(--hope);
-}
-.hope-note {
-  margin-left: auto;
-  color: var(--muted);
-  font-size: 11px;
-}
 .context-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 16px;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 12px;
+  padding-top: 16px;
+  border-top: 1px solid var(--line);
+}
+.context-grid > .context-card + .context-card {
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
 }
 .roster-heading {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  margin: 28px 0 14px;
+  margin: 16px 0 12px;
+  padding-top: 16px;
+  border-top: 1px solid var(--line);
 }
 .roster-heading h2 {
   font-size: 17px;
 }
-.roster-heading span,
 .result-footnote {
   font-size: 12px;
   color: var(--muted);
@@ -365,58 +308,23 @@ nav {
   margin-top: 18px;
 }
 .welcome-panel {
-  min-height: 288px;
+  min-height: 160px;
   display: flex;
   flex-direction: column;
   justify-content: center;
   align-items: center;
   text-align: center;
   padding: 32px;
-  background: var(--surface);
-  border: 1px solid var(--line);
-  border-radius: var(--radius);
-}
-.welcome-symbol {
-  background: var(--primary-soft);
-  color: var(--primary);
-  width: 56px;
-  height: 56px;
-  display: grid;
-  place-items: center;
-  border-radius: 16px;
-  margin-bottom: 20px;
-  transform: rotate(-7deg);
-}
-.welcome-symbol .icon {
-  width: 28px;
-  height: 28px;
+  background: var(--background);
+  border-radius: var(--radius-small);
 }
 .welcome-panel h3 {
-  font-size: 20px;
+  font-size: 18px;
   font-weight: 600;
 }
 .welcome-panel > p {
   margin-top: 8px;
   color: var(--muted);
-}
-.welcome-steps {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 20px;
-  margin-top: 28px;
-  font-size: 12px;
-  color: var(--muted);
-}
-.welcome-steps b {
-  color: var(--primary);
-  font-size: 11px;
-  margin-right: 6px;
-}
-.welcome-steps > .icon {
-  width: 14px;
-  height: 14px;
-  color: #adb5c2;
 }
 .state-panel {
   text-align: center;
@@ -464,21 +372,19 @@ nav {
 @media (max-width: 760px) {
   .header-inner {
     padding: 12px 20px;
+    flex-wrap: wrap;
+    row-gap: 8px;
+  }
+  .header-inner nav {
+    margin-left: auto;
   }
   .workspace {
     padding: 26px 20px 0;
   }
-  .page-caption,
-  .hope-note {
-    display: none;
-  }
-  .page-heading h1 {
-    font-size: 25px;
-  }
   .theme-copy {
     padding: 24px;
   }
-  .theme-copy h2 {
+  .theme-copy h1 {
     font-size: 23px;
   }
   .theme-art {
@@ -487,12 +393,6 @@ nav {
   }
   .theme-banner {
     min-height: 160px;
-  }
-  .context-grid {
-    grid-template-columns: 1fr;
-  }
-  .welcome-steps {
-    gap: 12px;
   }
   .summary-extra {
     display: none;
@@ -528,17 +428,11 @@ nav {
   .workspace {
     padding: 24px 16px 0;
   }
-  .page-heading h1 {
-    font-size: 23px;
-  }
   .theme-copy {
     padding: 22px;
   }
-  .theme-copy h2 {
+  .theme-copy h1 {
     font-size: 22px;
-  }
-  .theme-copy p {
-    font-size: 12px;
   }
   .pool-summary {
     padding: 14px;
@@ -560,6 +454,9 @@ nav {
     max-width: 165px;
     line-height: 1.8;
   }
+  .results-section {
+    padding: 20px 16px;
+  }
   .results-toolbar {
     align-items: stretch;
     flex-direction: column;
@@ -571,36 +468,8 @@ nav {
   .roll-button {
     width: 100%;
   }
-  .hope-strip {
-    gap: 16px;
-    justify-content: space-between;
-  }
-  .hope-strip dl {
-    flex: 1;
-    justify-content: space-around;
-    gap: 12px;
-  }
-  .hope-strip dl > div {
-    gap: 6px;
-  }
-  .hope-strip dd {
-    font-size: 19px;
-  }
   .welcome-panel {
     padding: 28px 16px;
-    min-height: 290px;
-  }
-  .welcome-panel h3 {
-    font-size: 18px;
-  }
-  .welcome-steps {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 10px;
-    margin-top: 24px;
-  }
-  .welcome-steps > .icon {
-    display: none;
   }
   .roster-heading {
     align-items: flex-start;

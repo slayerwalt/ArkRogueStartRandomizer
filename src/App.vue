@@ -4,11 +4,13 @@ import arknightsLogo from './assets/arknights-logo.svg';
 import rawData from './data/rogue-data.json';
 import AppIcon from './components/AppIcon.vue';
 import BaseDialog from './components/BaseDialog.vue';
+import CandidateStartPanel from './components/CandidateStartPanel.vue';
 import IntroModal from './components/IntroModal.vue';
 import RecruitSlots from './components/RecruitSlots.vue';
 import SettingsPanel from './components/SettingsPanel.vue';
 import SquadCard from './components/SquadCard.vue';
 import { useRandomizer } from './composables/useRandomizer';
+import { useCandidateStart } from './composables/useCandidateStart';
 import { useRollSettings } from './composables/useRollSettings';
 import { validateGameData } from './lib/data';
 import { ROGUE_THEMES } from './lib/themes';
@@ -33,11 +35,12 @@ const theme = computed(() =>
 );
 const activeDialog = ref<'settings' | 'themes' | 'help' | null>(null);
 const { settings, storageNotice, pruneNotice, migrationNotice } = useRollSettings(operators);
+const startMode = ref<'candidates' | 'quick'>('candidates');
+const summaryRarities = computed(() => startMode.value === 'candidates' ? [6] : POOL_RARITIES);
+const candidateStart = useCandidateStart(theme, operators, settings);
 const {
   result,
   blockReason,
-  usedHope,
-  remainingHope,
   roll,
   rollSquad,
   rollGroup,
@@ -48,7 +51,7 @@ const isBlocked = computed(() => Boolean(blockReason.value));
 function run(action: () => void, message: string) {
   if (isBlocked.value) return;
   action();
-  announcement.value = `${message}。剩余 ${remainingHope.value} 希望。${result.value?.slots.map((s, i) => `券位 ${i + 1}：${s.operator?.name ?? '暂无可选干员'}`).join('；')}`;
+  announcement.value = `${message}。${result.value?.slots.map((s, i) => `券位 ${i + 1}：${s.operator ? `${s.operator.name}，${s.operator.rarity} 星` : '暂无可选干员'}`).join('；')}`;
 }
 function selectTheme(id: string) {
   selectedThemeId.value = id;
@@ -58,15 +61,12 @@ function selectTheme(id: string) {
 </script>
 
 <template>
-  <a href="#main" class="skip-link">跳转到开局工作台</a>
+  <a href="#main" class="skip-link">跳转到主要内容</a>
   <header class="site-header">
     <div class="header-inner">
       <div class="brand">
         <span class="brand-symbol"><AppIcon name="shuffle" /></span>
-        <div>
-          <span class="brand-name">开局工作台</span>
-          <span class="brand-subtitle">明日方舟 · 集成战略</span>
-        </div>
+        <span class="brand-name">明日方舟集成战略随机工具</span>
       </div>
       <nav aria-label="工具导航">
         <button
@@ -90,13 +90,6 @@ function selectTheme(id: string) {
   </header>
 
   <main id="main" class="workspace">
-    <div class="page-heading">
-      <div>
-        <p class="eyebrow">ROGUE START / 随机开局</p>
-        <h1>让下一局，有点不一样。</h1>
-      </div>
-      <span class="page-caption">选好范围，剩下的交给随机。</span>
-    </div>
     <section class="theme-banner" aria-label="当前肉鸽主题">
       <div class="theme-copy">
         <div class="theme-status">
@@ -111,14 +104,7 @@ function selectTheme(id: string) {
             }}
           </span>
         </div>
-        <h2>{{ selectedTheme.name }}</h2>
-        <p>
-          {{
-            theme
-              ? '从一支分队开始，走进未知的树海。'
-              : '先看看这片世界，随机功能将在后续开放。'
-          }}
-        </p>
+        <h1>{{ selectedTheme.name }}</h1>
       </div>
       <img
         class="theme-art"
@@ -130,7 +116,7 @@ function selectTheme(id: string) {
     </section>
 
     <div v-if="loadError" class="state-panel" role="alert">
-      <h2>暂时无法开始</h2>
+      <h2>数据加载失败</h2>
       <p>{{ loadError }}</p>
     </div>
     <template v-else-if="theme">
@@ -138,12 +124,12 @@ function selectTheme(id: string) {
         <div>
           <span class="pool-icon"><AppIcon name="sliders" /></span>
           <div>
-            <strong>我的随机范围</strong>
+            <strong>{{ startMode === 'candidates' ? '六星随机范围' : '干员随机范围' }}</strong>
             <p>
-              <span v-for="r in POOL_RARITIES" :key="r" class="pool-count">
+              <span v-for="r in summaryRarities" :key="r" class="pool-count">
                 {{ r }} 星 {{ settings.pool[r]?.length ?? 0 }} 名
               </span>
-              <span class="summary-extra">三星固定参与</span>
+              <span class="summary-extra">{{ startMode === 'candidates' ? '用于起手候选' : '三星固定参与' }}</span>
             </p>
           </div>
         </div>
@@ -161,13 +147,9 @@ function selectTheme(id: string) {
       </p>
       <section class="results-section" aria-labelledby="result-title">
         <div class="results-toolbar">
-          <div>
-            <p class="eyebrow">YOUR NEXT RUN</p>
-            <h2 id="result-title">
-              {{ result ? '这一次的开局' : '准备好出发了吗？' }}
-            </h2>
-          </div>
+          <h2 id="result-title">随机开局</h2>
           <button
+            v-if="startMode === 'quick'"
             class="button primary roll-button"
             :disabled="isBlocked"
             :aria-describedby="isBlocked ? 'pool-warning' : undefined"
@@ -178,6 +160,16 @@ function selectTheme(id: string) {
             <AppIcon name="arrow" />
           </button>
         </div>
+        <div class="start-mode-switch" role="group" aria-label="开局方式">
+          <button :aria-pressed="startMode === 'candidates'" @click="startMode = 'candidates'; announcement = ''">候选开局</button>
+          <button :aria-pressed="startMode === 'quick'" @click="startMode = 'quick'; announcement = ''">一键随机</button>
+        </div>
+        <CandidateStartPanel
+          v-if="startMode === 'candidates'"
+          :controller="candidateStart"
+          @settings="activeDialog = 'settings'"
+        />
+        <template v-else>
         <div
           v-if="blockReason"
           id="pool-warning"
@@ -186,27 +178,9 @@ function selectTheme(id: string) {
         >
           <span>{{ blockReason }}</span>
           <button class="text-button" @click="activeDialog = 'settings'">
-            去调整范围
+            调整范围
             <AppIcon name="arrow" />
           </button>
-        </div>
-        <div class="hope-strip" aria-label="希望预算">
-          <span class="hope-label">希望预算</span>
-          <dl>
-            <div>
-              <dt>初始</dt>
-              <dd>{{ result?.initialHope ?? '—' }}</dd>
-            </div>
-            <div>
-              <dt>已用</dt>
-              <dd>{{ result ? usedHope : '—' }}</dd>
-            </div>
-            <div class="hope-remaining">
-              <dt>剩余</dt>
-              <dd>{{ result ? remainingHope : '—' }}</dd>
-            </div>
-          </dl>
-          <span class="hope-note">按分队与干员减免计算</span>
         </div>
         <template v-if="result">
           <div class="context-grid">
@@ -216,27 +190,23 @@ function selectTheme(id: string) {
               @reroll="run(rollSquad, '已重抽分队和全部券位')"
             />
             <section class="context-card group-card">
-              <div class="section-top">
+              <div class="context-main">
                 <span class="eyebrow">招募组合</span>
-                <button
-                  class="text-button"
-                  :disabled="isBlocked"
-                  @click="run(rollGroup, '已重抽招募组合和全部券位')"
-                >
-                  <AppIcon name="shuffle" />
-                  重抽组合
-                </button>
+                <h3>{{ result.group.name }}</h3>
+                <p>{{ result.group.desc }}</p>
               </div>
-              <h3>{{ result.group.name }}</h3>
-              <p>{{ result.group.desc }}</p>
-              <span class="group-tag">
-                {{ result.slots.length }} 张初始招募券
-              </span>
+              <button
+                class="text-button"
+                :disabled="isBlocked"
+                @click="run(rollGroup, '已重抽招募组合和全部券位')"
+              >
+                <AppIcon name="shuffle" />
+                重抽组合
+              </button>
             </section>
           </div>
           <div class="roster-heading">
             <h2>开局干员</h2>
-            <span>想换一位？试试重抽此券。</span>
           </div>
           <RecruitSlots
             :slots="result.slots"
@@ -247,51 +217,30 @@ function selectTheme(id: string) {
             @settings="activeDialog = 'settings'"
           />
           <p class="result-footnote">
-            范围调整仅影响后续随机。重抽分队或组合会重新生成全部券位。
+            点击干员可重抽该券位。范围调整仅影响后续随机；重抽分队或组合会重新生成全部券位。
           </p>
         </template>
         <div v-else class="welcome-panel">
-          <div class="welcome-symbol"><AppIcon name="shuffle" /></div>
-          <h3>你的下一套阵容，尚待揭晓。</h3>
-          <p>随机一支分队、一组招募券，和属于这一局的干员。</p>
-          <div class="welcome-steps">
-            <span>
-              <b>01</b>
-              选择干员范围
-            </span>
-            <AppIcon name="chevron" />
-            <span>
-              <b>02</b>
-              生成随机开局
-            </span>
-            <AppIcon name="chevron" />
-            <span>
-              <b>03</b>
-              重抽，直到满意
-            </span>
-          </div>
+          <h3>暂无随机结果</h3>
+          <p>点击“开始随机”生成分队、招募组合与干员。</p>
         </div>
+        </template>
       </section>
     </template>
     <section v-else class="state-panel">
-      <span class="eyebrow">COMING SOON</span>
-      <h2>这段旅程，还在准备中。</h2>
-      <p>
-        「{{ selectedTheme.name }}」的随机开局尚未开放。
-        <br />
-        你可以先前往黑流树海，开始一场新的冒险。
-      </p>
+      <h2>当前主题暂未开放</h2>
+      <p>「{{ selectedTheme.name }}」暂不支持随机开局。</p>
       <button class="button primary" @click="selectTheme('rogue_6')">
-        前往黑流树海
+        切换至黑流树海
         <AppIcon name="arrow" />
       </button>
     </section>
     <footer class="site-footer">
       <span class="footer-brand">
         <img :src="arknightsLogo" alt="明日方舟" width="78" height="24" />
-        集成战略开局随机器
+        集成战略随机工具
       </span>
-      <span>非官方玩家工具 · 祝你开局顺利</span>
+      <span>非官方玩家工具</span>
     </footer>
     <p class="sr-only" role="status" aria-live="polite" aria-atomic="true">
       {{ announcement }}
@@ -304,7 +253,7 @@ function selectTheme(id: string) {
       activeDialog === 'settings'
         ? '调整随机范围'
         : activeDialog === 'themes'
-          ? '选择你的旅程'
+          ? '选择肉鸽主题'
           : '使用说明'
     "
     :drawer="activeDialog === 'settings'"
@@ -330,7 +279,7 @@ function selectTheme(id: string) {
           <AppIcon v-if="selectedThemeId === t.id" name="check" />
         </span>
         <span class="theme-option-status">
-          {{ t.available ? '可用 · 开始探索' : '尚未开放 · 可浏览' }}
+          {{ t.available ? '支持随机开局' : '暂未开放' }}
         </span>
       </button>
     </div>
@@ -340,7 +289,7 @@ function selectTheme(id: string) {
         {{ storageNotice ? '仅保存于本次会话' : '设置自动保存' }}
       </span>
       <button class="button primary" @click="activeDialog = null">
-        {{ activeDialog === 'settings' ? '完成' : '返回工作台' }}
+        {{ activeDialog === 'settings' ? '完成' : '返回首页' }}
       </button>
     </template>
   </BaseDialog>
