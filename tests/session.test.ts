@@ -7,11 +7,12 @@ import type { StorageLike } from '../src/lib/settings';
 import type { Theme } from '../src/lib/types';
 import { useRandomizer } from '../src/composables/useRandomizer';
 import { useRollSettings } from '../src/composables/useRollSettings';
+import { LEGACY_DEFAULT_POOL } from '../src/lib/legacy-settings';
 
 const data = validateGameData(rawData);
 function setup() {
   const theme = ref<Theme | null>(data.themes[0]);
-  const settings = ref(createDefaultSettings());
+  const settings = ref(createDefaultSettings(data.operators));
   const randomizer = useRandomizer(theme, data.operators, settings, () => 0.31);
   return { theme, settings, ...randomizer };
 }
@@ -47,7 +48,7 @@ describe('随机会话', () => {
     app.rollGroup();
     app.rollSlot(0);
     expect(app.result.value).toBe(before);
-    app.settings.value = createDefaultSettings();
+    app.settings.value = createDefaultSettings(data.operators);
     expect(app.blockReason.value).toBe('');
     app.roll();
     expect(app.result.value).not.toBe(before);
@@ -106,7 +107,6 @@ describe('随机会话', () => {
 });
 
 describe('设置持久化边界', () => {
-  const validIds = new Set(data.operators.map((o) => o.id));
   it('存储获取、读取、写入失败时保留可用的会话设置', () => {
     const failure = () => {
       throw new Error('storage unavailable');
@@ -118,7 +118,7 @@ describe('设置持久化边界', () => {
     ];
     for (const getStorage of stores) {
       const scope = effectScope();
-      const state = scope.run(() => useRollSettings(validIds, getStorage))!;
+      const state = scope.run(() => useRollSettings(data.operators, getStorage))!;
       state.settings.value.pool[6] = ['test-session-value'];
       expect(state.settings.value.pool[6]).toEqual(['test-session-value']);
       expect(state.storageNotice.value).toContain('本次使用不受影响');
@@ -134,7 +134,7 @@ describe('设置持久化边界', () => {
       },
     };
     const scope = effectScope();
-    const state = scope.run(() => useRollSettings(validIds, () => storage))!;
+    const state = scope.run(() => useRollSettings(data.operators, () => storage))!;
     const six = data.operators.find((o) => o.rarity === 6)!.id;
     state.settings.value.pool[6] = [six];
     expect(JSON.parse(values[SETTINGS_KEY]).pool[6]).toEqual([six]);
@@ -144,11 +144,29 @@ describe('设置持久化边界', () => {
     values[SETTINGS_KEY] = JSON.stringify(saved);
     const restoredScope = effectScope();
     const restored = restoredScope.run(() =>
-      useRollSettings(validIds, () => storage),
+      useRollSettings(data.operators, () => storage),
     )!;
     expect(restored.settings.value.pool[6]).toEqual([six]);
     expect(restored.pruneNotice.value).toContain('1');
     expect(JSON.parse(values[SETTINGS_KEY]).pool[6]).toEqual([six]);
+    restoredScope.stop();
+  });
+  it('旧默认迁移后立即保存，新版本重新加载不会重复迁移', () => {
+    const values: Record<string, string> = { [SETTINGS_KEY]: JSON.stringify({ pool: LEGACY_DEFAULT_POOL }) };
+    const storage: StorageLike = {
+      getItem: (key) => values[key] ?? null,
+      setItem: (key, value) => { values[key] = value; },
+    };
+    const scope = effectScope();
+    const state = scope.run(() => useRollSettings(data.operators, () => storage))!;
+    expect(state.settings.value).toEqual(createDefaultSettings(data.operators));
+    expect(state.migrationNotice.value).toContain('全选');
+    expect(JSON.parse(values[SETTINGS_KEY]).version).toBe(2);
+    scope.stop();
+    const restoredScope = effectScope();
+    const restored = restoredScope.run(() => useRollSettings(data.operators, () => storage))!;
+    expect(restored.settings.value).toEqual(state.settings.value);
+    expect(restored.migrationNotice.value).toBe('');
     restoredScope.stop();
   });
 });

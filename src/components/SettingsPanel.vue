@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
-import { COMMON_OPERATORS } from '../lib/common-operators';
 import { CLASS_CN } from '../lib/constants';
 import { applyPreset, detectPreset, type PoolPreset } from '../lib/pool';
 import { POOL_RARITIES, type Operator, type RollSettings } from '../lib/types';
@@ -27,7 +26,6 @@ const preset = computed(() =>
   detectPreset(
     [...selected.value],
     all.value.map((o) => o.id),
-    COMMON_OPERATORS[rarity.value] ?? [],
   ),
 );
 const filtered = computed(() =>
@@ -50,7 +48,6 @@ function choosePreset(value: Exclude<PoolPreset, 'custom'>) {
     applyPreset(
       value,
       all.value.map((o) => o.id),
-      COMMON_OPERATORS[rarity.value] ?? [],
     ),
   );
 }
@@ -68,7 +65,7 @@ function resetFilters() {
 </script>
 <template>
   <p class="settings-intro">
-    选择你想遇到的干员。设置即时生效，仅影响后续随机；三星干员始终参与。
+    默认全部干员参与随机，点击卡片切换，高亮表示参与。设置仅影响后续随机；三星干员始终参与。
   </p>
   <div class="rarity-tabs" role="group" aria-label="选择星级">
     <button
@@ -109,12 +106,6 @@ function resetFilters() {
       role="group"
       :aria-label="`${rarity} 星全部干员范围操作`"
     >
-      <button
-        :aria-pressed="preset === 'common'"
-        @click="choosePreset('common')"
-      >
-        常见
-      </button>
       <button :aria-pressed="preset === 'all'" @click="choosePreset('all')">
         全选
       </button>
@@ -153,6 +144,6 @@ function resetFilters() {
     <button class="button secondary" @click="resetFilters">清除筛选条件</button>
   </div>
   <p class="settings-footnote">
-    “常见 / 全选 / 清空”作用于当前星级的全部干员，不受搜索或职业筛选影响。
+    “全选 / 清空”作用于当前星级的全部干员，不受搜索或职业筛选影响。
   </p>
 </template>

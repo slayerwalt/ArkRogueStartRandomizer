@@ -1,52 +1,63 @@
-import { COMMON_OPERATORS } from './common-operators';
-import { POOL_RARITIES, type RollSettings } from './types';
+import { LEGACY_DEFAULT_POOL } from './legacy-settings';
+import { POOL_RARITIES, type Operator, type RollSettings } from './types';
 
 export const SETTINGS_KEY = 'rogue-start-settings';
+const SETTINGS_VERSION = 2;
+type PoolOperator = Pick<Operator, 'id' | 'rarity'>;
 
 export interface StorageLike {
   getItem(key: string): string | null;
   setItem(key: string, value: string): void;
 }
 
-/** 默认随机范围：各星级取「常见」名单 */
-function defaultPool(): Record<number, string[]> {
+/** 默认随机范围始终从当前游戏数据生成，各星级全部参与。 */
+export function createDefaultSettings(operators: readonly PoolOperator[]): RollSettings {
   const pool: Record<number, string[]> = {};
-  for (const r of POOL_RARITIES) pool[r] = [...(COMMON_OPERATORS[r] ?? [])];
-  return pool;
+  for (const r of POOL_RARITIES) pool[r] = operators.filter((operator) => operator.rarity === r).map((operator) => operator.id);
+  return { pool };
 }
 
-export function createDefaultSettings(): RollSettings {
-  return { pool: defaultPool() };
+function matchesLegacyDefault(rarity: number, ids: readonly string[]): boolean {
+  const legacy = LEGACY_DEFAULT_POOL[rarity];
+  const selected = new Set(ids);
+  return selected.size === legacy.length && legacy.every((id) => selected.has(id));
 }
-
-export const DEFAULT_SETTINGS: RollSettings = createDefaultSettings();
 
 export function loadSettings(
   storage: StorageLike,
-  validOperatorIds: ReadonlySet<string>,
-): { settings: RollSettings; pruned: number } {
+  operators: readonly PoolOperator[],
+): { settings: RollSettings; pruned: number; migrated: boolean } {
+  const defaults = createDefaultSettings(operators);
+  const fallback = () => ({ settings: defaults, pruned: 0, migrated: false });
   const raw = storage.getItem(SETTINGS_KEY);
-  if (!raw) return { settings: createDefaultSettings(), pruned: 0 };
+  if (!raw) return fallback();
   try {
     const parsed = JSON.parse(raw);
-    const pool = defaultPool();
+    const pool = defaults.pool;
+    const legacy = parsed?.version === undefined || parsed?.version === 1;
     let pruned = 0;
+    let migrated = false;
     for (const r of POOL_RARITIES) {
       const list = parsed?.pool?.[r];
-      // 存储中缺少该星级时保留默认（常见名单）
+      // 缺少该星级时使用全选；手动清空的数组仍然保留。
       if (!Array.isArray(list)) continue;
-      const ids = list.filter((id: unknown) => typeof id === 'string');
-      const valid = ids.filter((id) => validOperatorIds.has(id));
+      const ids: string[] = list.filter((id: unknown) => typeof id === 'string');
+      if (legacy && matchesLegacyDefault(r, ids)) {
+        migrated = true;
+        continue;
+      }
+      const validIds = new Set(defaults.pool[r]);
+      const valid = [...new Set(ids.filter((id) => validIds.has(id)))];
       pruned += ids.length - valid.length;
       pool[r] = valid;
     }
     const settings: RollSettings = { pool };
-    return { settings, pruned };
+    return { settings, pruned, migrated };
   } catch {
-    return { settings: createDefaultSettings(), pruned: 0 };
+    return fallback();
   }
 }
 
 export function saveSettings(storage: StorageLike, settings: RollSettings): void {
-  storage.setItem(SETTINGS_KEY, JSON.stringify(settings));
+  storage.setItem(SETTINGS_KEY, JSON.stringify({ version: SETTINGS_VERSION, pool: settings.pool }));
 }

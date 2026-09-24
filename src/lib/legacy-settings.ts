@@ -1,12 +1,8 @@
 /**
- * 各星级「常见开局干员」名单。
- *
- * 如何修改：直接增删对应星级数组里的行即可，每行一个干员。
- * 行内用的是干员 id（数据中的唯一标识），后面的注释是干员名，方便对照；
- * 新增时从 src/data/rogue-data.json 里按干员名查到 id 再填入。
- * 名单变化会作为「常见」预设出现在设置中，也是新用户的默认范围。
+ * 旧版默认范围的固定快照，仅用于将历史存储迁移为全选。
+ * 不参与当前随机或范围设置，也不随游戏数据更新。
  */
-export const COMMON_OPERATORS: Record<number, string[]> = {
+export const LEGACY_DEFAULT_POOL: Record<number, string[]> = {
   6: [
     'char_1045_svash2', // 凛御银灰
     'char_4228_closur', // 可露希尔

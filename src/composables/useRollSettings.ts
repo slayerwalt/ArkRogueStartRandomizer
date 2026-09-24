@@ -5,16 +5,17 @@ import {
   saveSettings,
   type StorageLike,
 } from '../lib/settings';
-import type { RollSettings } from '../lib/types';
+import type { Operator, RollSettings } from '../lib/types';
 
 /** 浏览器存储仅是持久化边界；不可用时仍保留本次会话的设置。 */
 export function useRollSettings(
-  validIds: ReadonlySet<string>,
+  operators: readonly Operator[],
   getStorage: () => StorageLike = () => window.localStorage,
 ) {
-  const settings = ref<RollSettings>(createDefaultSettings());
+  const settings = ref<RollSettings>(createDefaultSettings(operators));
   const storageNotice = ref('');
   const pruneNotice = ref('');
+  const migrationNotice = ref('');
   let storage: StorageLike | undefined;
   const failed = () => {
     storageNotice.value = '设置暂无法保存到浏览器，本次使用不受影响。';
@@ -29,15 +30,16 @@ export function useRollSettings(
   };
   try {
     storage = getStorage();
-    const loaded = loadSettings(storage, validIds);
+    const loaded = loadSettings(storage, operators);
     settings.value = loaded.settings;
     if (loaded.pruned) {
-      pruneNotice.value = `已移除 ${loaded.pruned} 个数据中不存在的干员。`;
-      persist();
+      pruneNotice.value = `已移除 ${loaded.pruned} 条失效的干员设置。`;
     }
+    if (loaded.migrated) migrationNotice.value = '原“常见”范围已更新为全选，可在“调整范围”中修改。';
+    if (loaded.pruned || loaded.migrated) persist();
   } catch {
     failed();
   }
   watch(settings, persist, { deep: true, flush: 'sync' });
-  return { settings, storageNotice, pruneNotice };
+  return { settings, storageNotice, pruneNotice, migrationNotice };
 }

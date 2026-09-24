@@ -1,24 +1,16 @@
 import { POOL_RARITIES, type Operator, type RollSettings } from './types';
 
-/** 范围预设：全选 / 常见 / 全不选；手动微调后不匹配任何预设时为「自定义」 */
-export type PoolPreset = 'all' | 'common' | 'none' | 'custom';
+/** 范围预设：全选 / 全不选；部分选择时为「自定义」。 */
+export type PoolPreset = 'all' | 'none' | 'custom';
 
 /** 判断某星级当前的选择对应哪个预设 */
 export function detectPreset(
   selected: readonly string[],
   allIds: readonly string[],
-  commonIds: readonly string[],
 ): PoolPreset {
   if (selected.length === 0) return 'none';
   const sel = new Set(selected);
   if (sel.size === allIds.length && allIds.every((id) => sel.has(id))) return 'all';
-  if (
-    commonIds.length > 0 &&
-    sel.size === commonIds.length &&
-    commonIds.every((id) => sel.has(id))
-  ) {
-    return 'common';
-  }
   return 'custom';
 }
 
@@ -26,10 +18,8 @@ export function detectPreset(
 export function applyPreset(
   preset: Exclude<PoolPreset, 'custom'>,
   allIds: readonly string[],
-  commonIds: readonly string[],
 ): string[] {
   if (preset === 'all') return [...allIds];
-  if (preset === 'common') return [...commonIds];
   return [];
 }
 

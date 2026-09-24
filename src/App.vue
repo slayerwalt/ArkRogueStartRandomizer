@@ -32,9 +32,7 @@ const theme = computed(() =>
     : null,
 );
 const activeDialog = ref<'settings' | 'themes' | 'help' | null>(null);
-const { settings, storageNotice, pruneNotice } = useRollSettings(
-  new Set(operators.map((o) => o.id)),
-);
+const { settings, storageNotice, pruneNotice, migrationNotice } = useRollSettings(operators);
 const {
   result,
   blockReason,
@@ -158,8 +156,8 @@ function selectTheme(id: string) {
           <AppIcon name="chevron" />
         </button>
       </section>
-      <p v-if="storageNotice || pruneNotice" class="notice" role="status">
-        {{ [storageNotice, pruneNotice].filter(Boolean).join(' ') }}
+      <p v-if="storageNotice || pruneNotice || migrationNotice" class="notice" role="status">
+        {{ [storageNotice, pruneNotice, migrationNotice].filter(Boolean).join(' ') }}
       </p>
       <section class="results-section" aria-labelledby="result-title">
         <div class="results-toolbar">
