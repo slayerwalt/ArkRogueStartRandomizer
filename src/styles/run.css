@@ -1,0 +1,58 @@
+.feature-section {
+  margin-top: 24px;
+  padding: 24px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+.feature-title { font-size: 22px; }
+.feature-description { margin-top: 12px; color: var(--muted); font-size: 13px; }
+.feature-note { color: var(--muted); font-size: 12px; }
+.feature-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
+.feature-actions .button { white-space: nowrap; }
+.feature-actions .text-button { min-height: 44px; }
+.ticket-group { margin-top: 20px; }
+.ticket-group h3,
+.run-emergency h3 { font-size: 14px; font-weight: 600; margin-bottom: 8px; }
+.ticket-options { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+.ticket-options .button { padding: 8px 4px; white-space: nowrap; }
+.ticket-options .button:only-child { grid-column: span 2; }
+.in-run-draw { margin-top: 20px; }
+.feature-subheading { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 8px; }
+.feature-subheading h3 { font-size: 16px; }
+.feature-subheading > span { font-size: 12px; color: var(--muted); }
+.in-run-candidates { display: flex; flex-wrap: wrap; gap: 8px; margin-block: 16px; }
+.run-registration { margin-top: 24px; padding-top: 20px; border-top: 1px solid var(--line); }
+.run-registration .feature-note { margin-top: 10px; }
+.registration-grid { margin-top: 16px; }
+.run-emergency { margin-top: 20px; }
+.run-management { margin-top: 12px; }
+.run-management summary { min-height: 44px; padding-block: 10px; cursor: pointer; font-size: 13px; }
+.run-member-list { display: flex; flex-wrap: wrap; gap: 8px; list-style: none; margin: 8px 0 0; padding: 0; }
+.run-member { display: flex; align-items: center; gap: 8px; max-width: 100%; padding-left: 12px; border: 1px solid var(--line); border-radius: var(--radius-small); background: var(--background); font-size: 12px; }
+.run-member > span { min-width: 0; overflow-wrap: anywhere; }
+.run-member small { margin-left: 6px; color: var(--muted); font-size: 11px; }
+.run-member .text-button { flex: 0 0 44px; width: 44px; height: 44px; }
+.run-status { margin-top: 8px; color: var(--muted); font-size: 12px; }
+.run-status:empty { margin: 0; }
+.challenge-pool-control { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin-block: 20px; }
+.challenge-pool-control label { font-size: 13px; }
+.challenge-pool-control select { flex: 1; min-width: 0; max-width: 100%; min-height: 44px; border: 1px solid var(--line); border-radius: var(--radius-small); background: var(--surface); color: var(--ink); padding: 8px 12px; }
+.challenge-pool-control a { color: var(--primary); font-size: 12px; min-height: 44px; display: inline-flex; align-items: center; }
+.challenge-empty { margin-top: 20px; }
+.challenge-list { margin: 20px 0 0; padding-left: 24px; }
+.challenge-list > li { padding-left: 4px; border-bottom: 1px solid var(--line); }
+.challenge-list > li:last-child { border-bottom: 0; }
+.challenge-list > li::marker { font-size: 12px; color: var(--muted); }
+.challenge-term { display: flex; justify-content: space-between; align-items: center; gap: 12px; min-height: 52px; }
+.challenge-term > span { min-width: 0; overflow-wrap: anywhere; font-size: 14px; }
+.challenge-term strong { margin-right: 10px; font-size: 12px; color: var(--muted); }
+.challenge-term .text-button { flex: 0 0 44px; width: 44px; min-height: 44px; }
+@media (max-width: 600px) {
+  .feature-section { padding: 20px 16px; }
+  .challenge-pool-control select { font-size: 16px; }
+}
+@media (max-width: 360px) {
+  .ticket-options { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .challenge-pool-control label { width: 100%; }
+}

@@ -1,5 +1,6 @@
 @import './styles/tokens.css';
 @import './styles/components.css';
+@import './styles/run.css';
 
 * {
   box-sizing: border-box;
@@ -230,26 +231,29 @@ nav {
   display: flex;
   align-items: center;
   gap: 14px;
+  min-width: 0;
+}
+.pool-summary > div > div {
+  min-width: 0;
+}
+.pool-summary > .button {
+  flex-shrink: 0;
+  white-space: nowrap;
 }
 .pool-summary strong {
   font-weight: 600;
 }
 .pool-summary p {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 2px 12px;
   color: var(--muted);
   font-size: 12px;
   margin-top: 2px;
-}
-.pool-count {
-  white-space: nowrap;
 }
 .pool-icon {
   background: var(--background);
   border-radius: 10px;
   width: 40px;
   height: 40px;
+  flex-shrink: 0;
   display: grid;
   place-items: center;
   color: var(--muted);

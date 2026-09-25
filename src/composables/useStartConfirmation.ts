@@ -3,7 +3,7 @@ import type { CandidateStartController } from './useCandidateStart';
 import type { CandidateDraw } from '../lib/candidate-start';
 import type { Operator, RollResult, Theme } from '../lib/types';
 
-type ConfirmedStart = {
+export type ConfirmedStart = {
   operators: Operator[];
 } & (
   | { mode: 'candidates'; source: CandidateDraw; chosenId: string }
@@ -24,7 +24,8 @@ export function useStartConfirmation(
 ) {
   const session = shallowRef<ConfirmationSession | null>(null);
   const current = computed(() => session.value?.themeId === theme.value?.id ? session.value : null);
-  const recruited = computed(() => current.value?.start?.operators ?? []);
+  const confirmedStart = computed(() => current.value?.start ?? null);
+  const recruited = computed(() => confirmedStart.value?.operators.filter((operator) => operator.rarity === 6) ?? []);
   const hasConfirmed = computed(() => Boolean(current.value?.start));
   const collapsed = computed(() => current.value?.collapsed ?? false);
   const candidateRegistered = computed(() => {
@@ -52,6 +53,11 @@ export function useStartConfirmation(
     const chosen = candidates.chosen.value;
     if (!theme.value || !draw || !chosen || chosen.rarity !== 6) return false;
     candidates.confirmChoice();
+    const previous = current.value?.start;
+    if (previous?.mode === 'candidates' && previous.source === draw && previous.chosenId === chosen.id) {
+      update({ collapsed: true });
+      return true;
+    }
     update({
       collapsed: true,
       start: { mode: 'candidates', source: draw, chosenId: chosen.id, operators: [chosen] },
@@ -61,11 +67,15 @@ export function useStartConfirmation(
   function confirmQuick() {
     const result = quickResult.value;
     if (!canConfirmQuick.value || !result) return false;
-    const sixStars = result.slots.flatMap((slot) => slot.operator?.rarity === 6 ? [slot.operator] : []);
-    const unique = [...new Map(sixStars.map((operator) => [operator.id, operator])).values()];
+    if (quickRegistered.value) {
+      update({ collapsed: true });
+      return true;
+    }
+    const operators = result.slots.flatMap((slot) => slot.operator ? [slot.operator] : []);
+    const unique = [...new Map(operators.map((operator) => [operator.id, operator])).values()];
     update({ collapsed: true, start: { mode: 'quick', source: result, operators: unique } });
     return true;
   }
-  return { recruited, hasConfirmed, collapsed, candidateRegistered, quickRegistered,
+  return { confirmedStart, recruited, hasConfirmed, collapsed, candidateRegistered, quickRegistered,
     canConfirmQuick, toggleCollapsed, confirmCandidate, confirmQuick };
 }

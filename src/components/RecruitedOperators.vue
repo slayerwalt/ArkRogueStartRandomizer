@@ -17,7 +17,7 @@ defineProps<{ operators: readonly Operator[]; confirmed: boolean }>();
       </li>
     </ul>
     <p v-else class="recruited-empty">
-      {{ confirmed ? '本次确认的开局没有六星干员。' : '确认开局后，六星干员会显示在这里。' }}
+      {{ confirmed ? '本局暂无已招募的六星干员。' : '确认开局后，六星干员会显示在这里。' }}
     </p>
   </section>
 </template>

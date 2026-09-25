@@ -36,6 +36,22 @@ function chooseCandidate(app: ReturnType<typeof setup>) {
 }
 
 describe('开局确认与已招募名单', () => {
+  it('为局内抽取保存所有开局干员；重复确认同一结果保留会话身份', () => {
+    const app = setup();
+    app.quickResult.value = resultFor([six[0], five, four]);
+    app.confirmQuick();
+    const start = app.confirmedStart.value;
+    expect(start?.operators).toEqual([six[0], five, four]);
+    app.confirmQuick();
+    expect(app.confirmedStart.value).toBe(start);
+    chooseCandidate(app);
+    app.confirmCandidate();
+    const candidateStart = app.confirmedStart.value;
+    app.candidates.backToCandidates();
+    app.confirmCandidate();
+    expect(app.confirmedStart.value).toBe(candidateStart);
+  });
+
   it('抽取和选择候选不会登记，确认后登记六星并自动折叠', () => {
     const app = setup();
     expect(app.confirmCandidate()).toBe(false);

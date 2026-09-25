@@ -9,7 +9,7 @@ import SquadCard from './SquadCard.vue';
 
 const props = defineProps<{ controller: CandidateStartController; registered: boolean }>();
 defineEmits<{ settings: []; chooseSquad: []; confirm: [] }>();
-const { professions, squad, squadRandomized, draw, chosen, confirmed, available, blockReason, canDraw,
+const { professions, squad, squadRandomized, draw, chosen, confirmed, blockReason, canDraw,
   addProfession, removeProfession, clearProfessions, rollCandidates, selectCandidate,
   backToCandidates, editProfessions, rollSquad } = props.controller;
 const stageHeading = ref<HTMLElement>();
@@ -54,7 +54,6 @@ function randomSquad() {
           :aria-label="`填写${label}招募券，已填 ${professions.filter((item) => item === id).length} 张`"
           @click="addProfession(id)">
           <span>{{ label }}<span v-if="professions.includes(id)" class="profession-count">×{{ professions.filter((item) => item === id).length }}</span></span>
-          <small>{{ available.filter((operator) => operator.profession === id).length }} 名六星</small>
         </button>
       </div>
       <div class="profession-slots" aria-label="已填招募券">
@@ -124,9 +123,8 @@ function randomSquad() {
 .candidate-steps .active > span { background: var(--primary-soft); }
 .candidate-heading { font-size: 17px; margin-bottom: 8px; }
 .profession-options { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; margin-block: 18px; }
-.profession-option { display: grid; gap: 4px; padding: 12px 4px; border: 1px solid var(--line); border-radius: var(--radius-small); background: var(--surface); }
+.profession-option { display: grid; place-items: center; min-height: 44px; padding: 12px 4px; border: 1px solid var(--line); border-radius: var(--radius-small); background: var(--surface); }
 .profession-option:hover:not(:disabled) { border-color: var(--primary); background: var(--primary-soft); }
-.profession-option small { color: var(--muted); font-size: 11px; }
 .profession-count { margin-left: 4px; color: var(--primary); font-size: 12px; }
 .profession-slots { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
 .profession-slot { display: flex; align-items: center; justify-content: center; gap: 8px; min-height: 44px; padding: 8px; border: 1px dashed var(--line); border-radius: var(--radius-small); color: var(--muted); font-size: 13px; }

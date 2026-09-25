@@ -2,10 +2,13 @@
 import { computed, nextTick, ref } from 'vue';
 import arknightsLogo from './assets/arknights-logo.svg';
 import rawData from './data/rogue-data.json';
+import rawChallenges from './data/challenge-pools.json';
 import AppIcon from './components/AppIcon.vue';
 import BaseDialog from './components/BaseDialog.vue';
 import CandidateStartPanel from './components/CandidateStartPanel.vue';
 import IntroModal from './components/IntroModal.vue';
+import InRunRecruitmentPanel from './components/InRunRecruitmentPanel.vue';
+import ChallengePanel from './components/ChallengePanel.vue';
 import RecruitSlots from './components/RecruitSlots.vue';
 import RecruitedOperators from './components/RecruitedOperators.vue';
 import SettingsPanel from './components/SettingsPanel.vue';
@@ -15,9 +18,12 @@ import { useRandomizer } from './composables/useRandomizer';
 import { useCandidateStart } from './composables/useCandidateStart';
 import { useRollSettings } from './composables/useRollSettings';
 import { useStartConfirmation } from './composables/useStartConfirmation';
+import { useInRunRecruitment } from './composables/useInRunRecruitment';
+import { useChallenges } from './composables/useChallenges';
+import { readChallengePools, type ChallengePool } from './lib/challenges';
 import { validateGameData } from './lib/data';
 import { ROGUE_THEMES, squadIcon } from './lib/themes';
-import { POOL_RARITIES, type GameData } from './lib/types';
+import type { GameData } from './lib/types';
 
 let data: GameData | null = null;
 let loadError = '';
@@ -27,6 +33,13 @@ try {
   loadError = '游戏数据暂时无法读取，请刷新页面重试。';
 }
 const operators = data?.operators ?? [];
+let challengePools: ChallengePool[] = [];
+let challengeError = '';
+try {
+  challengePools = readChallengePools(rawChallenges);
+} catch {
+  challengeError = '词条池暂时无法读取，请刷新页面重试。';
+}
 const selectedThemeId = ref('rogue_6');
 const selectedTheme = computed(
   () => ROGUE_THEMES.find((t) => t.id === selectedThemeId.value)!,
@@ -54,8 +67,10 @@ const {
   selectSquad,
   selectGroup,
 } = useRandomizer(theme, operators, settings);
-const { recruited, hasConfirmed, collapsed, candidateRegistered, quickRegistered,
+const { confirmedStart, recruited, hasConfirmed, collapsed, candidateRegistered, quickRegistered,
   canConfirmQuick, toggleCollapsed, confirmCandidate, confirmQuick } = useStartConfirmation(theme, candidateStart, result);
+const inRun = useInRunRecruitment(operators, settings, confirmedStart);
+const challenges = useChallenges(theme, challengePools);
 const startToggle = ref<HTMLButtonElement>();
 const choiceOptions = computed(() => activeDialog.value === 'group'
   ? (theme.value?.recruitGroups ?? []).map(({ id, name, desc }) => ({ id, name, desc }))
@@ -164,12 +179,7 @@ function selectTheme(id: string) {
           <span class="pool-icon"><AppIcon name="sliders" /></span>
           <div>
             <strong>干员随机范围设置</strong>
-            <p>
-              <span v-for="r in POOL_RARITIES" :key="r" class="pool-count">
-                {{ r }} 星 {{ settings.pool[r]?.length ?? 0 }} 名
-              </span>
-              <span class="summary-extra">两种开局共用 · 三星固定参与全随机开局</span>
-            </p>
+            <p class="summary-extra">开局与局内抽取共用</p>
           </div>
         </div>
         <button
@@ -184,7 +194,7 @@ function selectTheme(id: string) {
       <p v-if="storageNotice || pruneNotice || migrationNotice" class="notice" role="status">
         {{ [storageNotice, pruneNotice, migrationNotice].filter(Boolean).join(' ') }}
       </p>
-      <RecruitedOperators :operators="recruited" :confirmed="hasConfirmed" />
+      <RecruitedOperators :operators="inRun.sixStars.value" :confirmed="hasConfirmed" />
       <section class="results-section" :class="{ collapsed }" aria-labelledby="result-title">
         <h2 class="start-heading">
           <button ref="startToggle" class="start-toggle" :aria-expanded="!collapsed" aria-controls="start-content"
@@ -275,7 +285,7 @@ function selectTheme(id: string) {
             @settings="activeDialog = 'settings'"
           />
           <div class="quick-confirm">
-            <p>{{ quickRegistered ? '本次开局已确认。' : '确认后将六星干员加入已招募名单，并收起开局卡片。' }}</p>
+            <p>{{ quickRegistered ? '本次开局已确认。' : '确认后登记全部开局干员，并收起开局卡片。' }}</p>
             <button class="button primary" :disabled="!canConfirmQuick || quickRegistered"
               @click="finishStart(confirmQuick)">
               {{ quickRegistered ? '已确认开局' : '确认开局' }}
@@ -291,8 +301,11 @@ function selectTheme(id: string) {
           <p>可先选择或随机分队、招募组合，再点击“开始随机”生成干员；未选项目会自动随机。</p>
         </div>
         </template>
+        <p v-if="hasConfirmed" class="result-footnote">重新确认其他开局会重置本局招募和应急助力名单。</p>
         </div>
       </section>
+      <InRunRecruitmentPanel :controller="inRun" />
+      <ChallengePanel :pools="challengePools" :controller="challenges" :error="challengeError" />
     </template>
     <section v-else class="state-panel">
       <h2>当前主题暂未开放</h2>

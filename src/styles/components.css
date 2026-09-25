@@ -42,7 +42,7 @@
 }
 .recruited-section {
   margin-top: 24px;
-  padding: 20px 24px;
+  padding: 12px 24px;
   border: 1px solid var(--line);
   border-radius: var(--radius);
   background: var(--surface);
@@ -62,15 +62,21 @@
   font-size: 12px;
 }
 .recruited-empty {
-  margin-top: 12px;
+  margin-top: 8px;
 }
 .recruited-list {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
   list-style: none;
-  margin-top: 14px;
+  margin: 8px 0 0;
   padding: 0;
+}
+.recruited-list .operator-tile {
+  padding-block: 0;
+}
+.recruited-list .operator-tile .portrait-name {
+  min-height: 0;
 }
 .start-toggle {
   display: flex;
@@ -706,7 +712,7 @@ button.operator-tile.selected:hover {
 }
 @media (max-width: 600px) {
   .recruited-section {
-    padding: 20px 16px;
+    padding-inline: 16px;
   }
   .start-toggle {
     font-size: 22px;
