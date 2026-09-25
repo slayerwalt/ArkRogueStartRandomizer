@@ -8,6 +8,7 @@ import type { Theme } from '../src/lib/types';
 import { useRandomizer } from '../src/composables/useRandomizer';
 import { useRollSettings } from '../src/composables/useRollSettings';
 import { LEGACY_DEFAULT_POOL } from '../src/lib/legacy-settings';
+import { effectiveHopeCost } from '../src/lib/roll';
 
 const data = validateGameData(rawData);
 function setup() {
@@ -18,6 +19,85 @@ function setup() {
 }
 
 describe('随机会话', () => {
+  it('首次开局使用手选条件，全部重随机重新抽取条件', () => {
+    const app = setup();
+    const squad = app.theme.value!.squads[0];
+    const group = app.theme.value!.recruitGroups[0];
+    app.selectSquad(squad.id);
+    app.selectGroup(group.id);
+    expect(app.result.value).toBeNull();
+    expect(app.squad.value).toBe(squad);
+    expect(app.group.value).toBe(group);
+    expect(app.squadRandomized.value).toBe(false);
+    app.roll();
+    expect(app.result.value!.squad).toBe(squad);
+    expect(app.result.value!.group).toBe(group);
+    app.roll();
+    expect(app.squad.value).not.toBe(squad);
+    expect(app.group.value).not.toBe(group);
+    expect(app.squadRandomized.value).toBe(true);
+    expect(app.groupRandomized.value).toBe(true);
+  });
+  it('开局前单项随机不提前生成阵容，开始时只补齐未选项目', () => {
+    for (const field of ['squad', 'group'] as const) {
+      const app = setup();
+      if (field === 'squad') app.rollSquad();
+      else app.rollGroup();
+      const selected = app[field].value;
+      expect(selected).not.toBeNull();
+      expect(app.result.value).toBeNull();
+      expect(app[field === 'squad' ? 'group' : 'squad'].value).toBeNull();
+      app.roll();
+      expect(app.result.value![field]).toBe(selected);
+      expect(app.result.value!.slots).toHaveLength(3);
+      expect(app.remainingHope.value).toBeGreaterThanOrEqual(0);
+    }
+  });
+  it('手选分队或组合重建干员并保留另一项，使用新希望预算与券位限制', () => {
+    const app = setup();
+    const highHope = app.theme.value!.squads.find((s) => s.initialHopeBonus > 0)!;
+    const lowHope = app.theme.value!.squads.find((s) => s.initialHopeBonus === 0)!;
+    app.selectSquad(highHope.id);
+    app.roll();
+    const before = app.result.value!;
+    app.selectSquad(lowHope.id);
+    expect(app.result.value!.squad).toBe(lowHope);
+    expect(app.result.value!.group).toBe(before.group);
+    expect(app.result.value!.initialHope).toBeLessThan(before.initialHope);
+    expect(app.result.value!.slots).not.toBe(before.slots);
+    const group = app.theme.value!.recruitGroups.find((g) => g.id !== before.group.id)!;
+    app.selectGroup(group.id);
+    const after = app.result.value!;
+    expect(after.squad).toBe(lowHope);
+    expect(after.group).toBe(group);
+    expect(after.slots.map((s) => s.slot)).toEqual(group.slots);
+    expect(app.remainingHope.value).toBeGreaterThanOrEqual(0);
+    for (const slot of after.slots) {
+      if (!slot.operator) continue;
+      expect(slot.slot.classes).toContain(slot.operator.profession);
+      expect(slot.operator.rarity).toBeLessThanOrEqual(slot.slot.rarityCap ?? 6);
+      expect(slot.hopeCost).toBe(effectiveHopeCost(slot.operator, lowHope));
+    }
+  });
+  it('无效选择、重复选择、空范围及不可用主题不会覆盖当前结果', () => {
+    const app = setup();
+    app.roll();
+    const before = app.result.value!;
+    app.selectSquad('invalid');
+    app.selectGroup('invalid');
+    app.selectSquad(before.squad.id);
+    app.selectGroup(before.group.id);
+    expect(app.result.value).toBe(before);
+    app.settings.value.pool[6] = [];
+    app.selectSquad(data.themes[0].squads[0].id);
+    app.selectGroup(data.themes[0].recruitGroups[0].id);
+    expect(app.result.value).toBe(before);
+    app.theme.value = null;
+    app.selectSquad(data.themes[0].squads[0].id);
+    app.selectGroup(data.themes[0].recruitGroups[0].id);
+    app.theme.value = data.themes[0];
+    expect(app.result.value).toBe(before);
+  });
   it('尚未随机和主题不可用时均无结果，返回原主题恢复开局', () => {
     const app = setup();
     expect(app.result.value).toBeNull();

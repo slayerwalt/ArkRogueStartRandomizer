@@ -74,7 +74,10 @@ function resetFilters() {
 </script>
 <template>
   <p class="settings-intro">
-    默认全部干员参与随机，点击卡片切换，高亮表示参与。设置仅影响后续随机；三星干员始终参与。
+    两种开局共用此设置，随心所欲开局仅使用六星名单，全随机开局使用四、五、六星名单，三星固定参与全随机开局。
+  </p>
+  <p class="settings-intro">
+    默认全部干员参与随机，点击卡片切换，高亮表示参与。设置仅影响后续随机。
   </p>
   <div class="rarity-tabs" role="group" aria-label="选择星级">
     <button

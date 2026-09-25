@@ -7,11 +7,11 @@ import AppIcon from './AppIcon.vue';
 import OperatorPortrait from './OperatorPortrait.vue';
 import SquadCard from './SquadCard.vue';
 
-const props = defineProps<{ controller: CandidateStartController }>();
-defineEmits<{ settings: [] }>();
-const { professions, squad, draw, chosen, confirmed, available, blockReason, canDraw,
+const props = defineProps<{ controller: CandidateStartController; registered: boolean }>();
+defineEmits<{ settings: []; chooseSquad: []; confirm: [] }>();
+const { professions, squad, squadRandomized, draw, chosen, confirmed, available, blockReason, canDraw,
   addProfession, removeProfession, clearProfessions, rollCandidates, selectCandidate,
-  confirmChoice, backToCandidates, editProfessions, rollSquad } = props.controller;
+  backToCandidates, editProfessions, rollSquad } = props.controller;
 const stageHeading = ref<HTMLElement>();
 const announcement = ref('');
 const step = computed(() => confirmed.value ? 3 : draw.value ? 2 : 1);
@@ -32,50 +32,43 @@ function randomSquad() {
 
 <template>
   <div class="candidate-start">
-    <p class="mode-description">抽取六星候选，从中选择 1 名起手干员，其余干员自行搭配。</p>
     <div class="candidate-squad">
-      <SquadCard v-if="squad" :squad="squad" :disabled="false" @reroll="randomSquad" />
-      <div v-else class="context-card">
-        <div class="context-main">
-          <span class="eyebrow">开局分队</span>
-          <p>可单独随机分队</p>
-        </div>
-        <button class="text-button" @click="randomSquad"><AppIcon name="shuffle" />随机分队</button>
-      </div>
+      <SquadCard :squad="squad" :disabled="false" :randomized="squadRandomized"
+        @choose="$emit('chooseSquad')" @reroll="randomSquad" />
     </div>
     <ol class="candidate-steps" aria-label="开局步骤">
-      <li v-for="(label, i) in ['选择职业', '选择候选', '确认起手']" :key="label"
+      <li v-for="(label, i) in ['填写招募券', '选择干员', '确认起手']" :key="label"
         :class="{ active: step === i + 1 }" :aria-current="step === i + 1 ? 'step' : undefined">
         <span>{{ i + 1 }}</span>{{ label }}
       </li>
     </ol>
     <h3 ref="stageHeading" tabindex="-1" class="candidate-heading">
-      {{ confirmed ? '已确定起手干员' : draw ? '选择 1 名六星干员' : '选择三个职业位' }}
+      {{ confirmed ? '已确定起手干员' : draw ? '选择 1 名六星干员' : '填写游戏给出的三张券' }}
     </h3>
 
     <template v-if="!draw">
-      <p class="candidate-hint">同一职业可重复选择，每个职业位抽 {{ CANDIDATES_PER_SLOT }} 名六星。</p>
-      <div class="profession-options" role="group" aria-label="添加开局职业位">
+      <p class="candidate-hint">按券面选择职业，重复职业可多次填写。每张券抽 {{ CANDIDATES_PER_SLOT }} 名六星。</p>
+      <div class="profession-options" role="group" aria-label="填写招募券职业">
         <button v-for="(label, id) in CLASS_CN" :key="id" class="profession-option"
           :disabled="professions.length >= START_PROFESSION_SLOTS"
-          :aria-label="`添加${label}职业位，已选 ${professions.filter((item) => item === id).length} 次`"
+          :aria-label="`填写${label}招募券，已填 ${professions.filter((item) => item === id).length} 张`"
           @click="addProfession(id)">
           <span>{{ label }}<span v-if="professions.includes(id)" class="profession-count">×{{ professions.filter((item) => item === id).length }}</span></span>
           <small>{{ available.filter((operator) => operator.profession === id).length }} 名六星</small>
         </button>
       </div>
-      <div class="profession-slots" aria-label="已选职业位">
+      <div class="profession-slots" aria-label="已填招募券">
         <template v-for="i in START_PROFESSION_SLOTS" :key="i">
           <button v-if="professions[i - 1]" class="profession-slot filled"
-            :aria-label="`移除第 ${i} 个职业位：${CLASS_CN[professions[i - 1]]}`" @click="removeProfession(i - 1)">
+            :aria-label="`移除第 ${i} 张招募券：${CLASS_CN[professions[i - 1]]}`" @click="removeProfession(i - 1)">
             {{ CLASS_CN[professions[i - 1]] }}<AppIcon name="close" />
           </button>
-          <span v-else class="profession-slot">待选职业</span>
+          <span v-else class="profession-slot">第 {{ i }} 张券</span>
         </template>
       </div>
       <div class="candidate-setup-actions">
-        <span class="candidate-hint" role="status">{{ professions.length === START_PROFESSION_SLOTS ? '已选满 3 个职业位' : `还需选择 ${START_PROFESSION_SLOTS - professions.length} 个职业位` }}</span>
-        <button v-if="professions.length" class="text-button" @click="clearProfessions">清空职业</button>
+        <span class="candidate-hint" role="status">{{ professions.length === START_PROFESSION_SLOTS ? '已填写 3 张招募券' : `还需填写 ${START_PROFESSION_SLOTS - professions.length} 张招募券` }}</span>
+        <button v-if="professions.length" class="text-button" @click="clearProfessions">清空招募券</button>
       </div>
     </template>
 
@@ -96,7 +89,7 @@ function randomSquad() {
       </div>
       <div class="candidate-confirm">
         <span role="status">{{ chosen ? `已选：${chosen.name}` : '请选择一名干员' }}</span>
-        <button class="button primary" :disabled="!chosen" @click="move(confirmChoice)">确认起手<AppIcon name="check" /></button>
+        <button class="button primary" :disabled="!chosen" @click="$emit('confirm')">确认起手</button>
       </div>
     </template>
 
@@ -104,6 +97,9 @@ function randomSquad() {
       <article class="operator-tile" :aria-label="`起手干员：${chosen.name}，六星`">
         <OperatorPortrait :operator="chosen" />
       </article>
+      <button class="button primary" :disabled="registered" @click="$emit('confirm')">
+        {{ registered ? '已确认开局' : '确认开局' }}
+      </button>
       <button class="text-button" @click="move(backToCandidates)">返回本轮候选</button>
     </div>
 
@@ -111,15 +107,15 @@ function randomSquad() {
       <button :class="['button', draw ? 'secondary' : 'primary']" :disabled="!canDraw" @click="move(rollCandidates)">
         <AppIcon name="shuffle" />{{ draw ? '重新抽取候选' : '抽取六星候选' }}
       </button>
-      <button v-if="draw" class="text-button" @click="move(editProfessions)">重新选择职业</button>
+      <button v-if="draw" class="text-button" @click="move(editProfessions)">重新填写招募券</button>
     </div>
-    <p class="result-footnote">{{ draw ? '重新抽取或选择职业会清空本次选择。' : '最多提供 9 名不重复候选，人数不足时按实际数量抽取。' }}调整范围仅影响后续抽取。</p>
+    <p class="result-footnote">{{ draw ? '重新抽取或填写招募券会清空本次选择。' : '最多提供 9 名不重复候选，人数不足时按实际数量抽取。' }}调整范围仅影响后续抽取。</p>
     <p class="sr-only" role="status" aria-live="polite">{{ announcement }}</p>
   </div>
 </template>
 
 <style scoped>
-.mode-description, .candidate-hint { color: var(--muted); font-size: 13px; }
+.candidate-hint { color: var(--muted); font-size: 13px; }
 .candidate-squad { margin-block: 20px; padding-bottom: 20px; border-bottom: 1px solid var(--line); }
 .candidate-steps { display: flex; gap: 16px; list-style: none; margin: 0 0 24px; padding: 0; color: var(--muted); font-size: 12px; }
 .candidate-steps li { display: flex; align-items: center; gap: 6px; }

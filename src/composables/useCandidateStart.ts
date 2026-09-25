@@ -7,12 +7,13 @@ interface CandidateSession {
   themeId: string;
   professions: string[];
   squad: Squad | null;
+  squadRandomized: boolean;
   draw: CandidateDraw | null;
   selectedId: string | null;
   confirmed: boolean;
 }
 
-/** 与一键随机独立；候选固定到下次抽取，设置变更仅用于后续抽取。 */
+/** 与全随机开局独立；候选固定到下次抽取，设置变更仅用于后续抽取。 */
 export function useCandidateStart(
   theme: Readonly<Ref<Theme | null>>,
   operators: readonly Operator[],
@@ -23,6 +24,7 @@ export function useCandidateStart(
   const current = computed(() => session.value?.themeId === theme.value?.id ? session.value : null);
   const professions = computed(() => current.value?.professions ?? []);
   const squad = computed(() => current.value?.squad ?? null);
+  const squadRandomized = computed(() => current.value?.squadRandomized ?? false);
   const draw = computed(() => current.value?.draw ?? null);
   const chosen = computed(() => draw.value?.candidates.find((operator) => operator.id === current.value?.selectedId) ?? null);
   const confirmed = computed(() => current.value?.confirmed ?? false);
@@ -32,7 +34,7 @@ export function useCandidateStart(
     if (!available.value.length) return '请先为六星选择至少一名干员。';
     if (professions.value.length === START_PROFESSION_SLOTS &&
       !available.value.some((operator) => professions.value.includes(operator.profession))) {
-      return '所选职业中暂无可用六星干员，请修改职业或调整范围。';
+      return '所选职业中暂无可用六星干员，请核对招募券或调整范围。';
     }
     return '';
   });
@@ -41,7 +43,7 @@ export function useCandidateStart(
   function update(patch: Partial<CandidateSession>) {
     if (!theme.value) return;
     session.value = {
-      ...(current.value ?? { themeId: theme.value.id, professions: [], squad: null, draw: null, selectedId: null, confirmed: false }),
+      ...(current.value ?? { themeId: theme.value.id, professions: [], squad: null, squadRandomized: false, draw: null, selectedId: null, confirmed: false }),
       ...patch,
     };
   }
@@ -75,11 +77,15 @@ export function useCandidateStart(
     update({ draw: null, selectedId: null, confirmed: false });
   }
   function rollSquad() {
-    if (theme.value?.squads.length) update({ squad: pickOne(theme.value.squads, rng) });
+    if (theme.value?.squads.length) update({ squad: pickOne(theme.value.squads, rng), squadRandomized: true });
   }
-  return { professions, squad, draw, chosen, confirmed, available, blockReason, canDraw,
+  function selectSquad(id: string) {
+    const next = theme.value?.squads.find((item) => item.id === id);
+    if (next) update({ squad: next, squadRandomized: false });
+  }
+  return { professions, squad, squadRandomized, draw, chosen, confirmed, available, blockReason, canDraw,
     addProfession, removeProfession, clearProfessions, rollCandidates, selectCandidate, confirmChoice,
-    backToCandidates, editProfessions, rollSquad };
+    backToCandidates, editProfessions, rollSquad, selectSquad };
 }
 
 export type CandidateStartController = ReturnType<typeof useCandidateStart>;

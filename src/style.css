@@ -274,9 +274,6 @@ nav {
 .roll-button {
   min-width: 190px;
 }
-.roll-button .icon:last-child {
-  margin-left: 18px;
-}
 .context-grid {
   display: grid;
   grid-template-columns: minmax(0, 1fr);

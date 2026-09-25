@@ -60,6 +60,30 @@ function selectThree(app: ReturnType<typeof setup>) {
 }
 
 describe('候选开局会话', () => {
+  it('指定分队保留候选和已确认起手，随机按钮状态随操作更新', () => {
+    const app = setup();
+    selectThree(app);
+    app.rollCandidates();
+    app.selectCandidate(app.draw.value!.candidates[0].id);
+    app.confirmChoice();
+    const before = app.draw.value;
+    const chosen = app.chosen.value;
+    app.rollSquad();
+    expect(app.squadRandomized.value).toBe(true);
+    const squad = app.theme.value!.squads[1];
+    app.selectSquad(squad.id);
+    expect(app.squad.value).toBe(squad);
+    expect(app.squadRandomized.value).toBe(false);
+    expect(app.draw.value).toBe(before);
+    expect(app.chosen.value).toBe(chosen);
+    expect(app.confirmed.value).toBe(true);
+    app.selectSquad('invalid');
+    expect(app.squad.value).toBe(squad);
+    app.theme.value = null;
+    app.selectSquad(data.themes[0].squads[0].id);
+    app.theme.value = data.themes[0];
+    expect(app.squad.value).toBe(squad);
+  });
   it('只要求六星范围，职业位未选满或选人非法时不能确认', () => {
     const app = setup();
     app.addProfession('invalid');
