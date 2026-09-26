@@ -6,6 +6,7 @@ import type { Operator, RollSettings, Squad, Theme } from '../lib/types';
 interface CandidateSession {
   themeId: string;
   professions: string[];
+  professionSlot: number | null;
   squad: Squad | null;
   squadRandomized: boolean;
   draw: CandidateDraw | null;
@@ -26,6 +27,8 @@ export function useCandidateStart(
   const squad = computed(() => current.value?.squad ?? null);
   const squadRandomized = computed(() => current.value?.squadRandomized ?? false);
   const draw = computed(() => current.value?.draw ?? null);
+  const professionSlot = computed(() => draw.value ? null : current.value?.professionSlot ??
+    (professions.value.length < START_PROFESSION_SLOTS ? professions.value.length : null));
   const chosen = computed(() => draw.value?.candidates.find((operator) => operator.id === current.value?.selectedId) ?? null);
   const confirmed = computed(() => current.value?.confirmed ?? false);
   const available = computed(() => sixStarPool(operators, settings.value));
@@ -43,25 +46,38 @@ export function useCandidateStart(
   function update(patch: Partial<CandidateSession>) {
     if (!theme.value) return;
     session.value = {
-      ...(current.value ?? { themeId: theme.value.id, professions: [], squad: null, squadRandomized: false, draw: null, selectedId: null, confirmed: false }),
+      ...(current.value ?? { themeId: theme.value.id, professions: [], professionSlot: null, squad: null, squadRandomized: false, draw: null, selectedId: null, confirmed: false }),
       ...patch,
     };
   }
   function addProfession(profession: string) {
     if (draw.value || professions.value.length >= START_PROFESSION_SLOTS ||
       !operators.some((operator) => operator.profession === profession)) return;
-    update({ professions: [...professions.value, profession] });
+    update({ professions: [...professions.value, profession], professionSlot: null });
+  }
+  function selectProfessionSlot(index: number) {
+    if (draw.value || !Number.isInteger(index) || index < 0 || index >= professions.value.length) return;
+    update({ professionSlot: current.value?.professionSlot === index ? null : index });
+  }
+  function fillProfession(profession: string) {
+    const index = professionSlot.value;
+    if (index === null || !operators.some((operator) => operator.profession === profession)) return;
+    if (index === professions.value.length) {
+      addProfession(profession);
+      return;
+    }
+    update({ professions: professions.value.map((item, i) => i === index ? profession : item), professionSlot: null });
   }
   function removeProfession(index: number) {
     if (draw.value || !Number.isInteger(index) || index < 0 || index >= professions.value.length) return;
-    update({ professions: professions.value.filter((_, i) => i !== index) });
+    update({ professions: professions.value.filter((_, i) => i !== index), professionSlot: null });
   }
   function clearProfessions() {
-    if (!draw.value) update({ professions: [] });
+    if (!draw.value) update({ professions: [], professionSlot: null });
   }
   function rollCandidates() {
     if (!canDraw.value) return;
-    update({ draw: drawStartCandidates(operators, settings.value, professions.value, rng), selectedId: null, confirmed: false });
+    update({ draw: drawStartCandidates(operators, settings.value, professions.value, rng), selectedId: null, confirmed: false, professionSlot: null });
   }
   function selectCandidate(id: string) {
     if (confirmed.value || !draw.value?.candidates.some((operator) => operator.id === id)) return;
@@ -74,7 +90,7 @@ export function useCandidateStart(
     if (draw.value) update({ confirmed: false });
   }
   function editProfessions() {
-    update({ draw: null, selectedId: null, confirmed: false });
+    update({ draw: null, selectedId: null, confirmed: false, professionSlot: null });
   }
   function rollSquad() {
     if (theme.value?.squads.length) update({ squad: pickOne(theme.value.squads, rng), squadRandomized: true });
@@ -83,9 +99,12 @@ export function useCandidateStart(
     const next = theme.value?.squads.find((item) => item.id === id);
     if (next) update({ squad: next, squadRandomized: false });
   }
-  return { professions, squad, squadRandomized, draw, chosen, confirmed, available, blockReason, canDraw,
-    addProfession, removeProfession, clearProfessions, rollCandidates, selectCandidate, confirmChoice,
-    backToCandidates, editProfessions, rollSquad, selectSquad };
+  function resetDraft() {
+    if (current.value) session.value = null;
+  }
+  return { professions, professionSlot, squad, squadRandomized, draw, chosen, confirmed, available, blockReason, canDraw,
+    addProfession, selectProfessionSlot, fillProfession, removeProfession, clearProfessions, rollCandidates, selectCandidate, confirmChoice,
+    backToCandidates, editProfessions, rollSquad, selectSquad, resetDraft };
 }
 
 export type CandidateStartController = ReturnType<typeof useCandidateStart>;

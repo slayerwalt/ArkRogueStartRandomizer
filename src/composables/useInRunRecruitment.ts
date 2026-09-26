@@ -1,4 +1,4 @@
-import { computed, shallowRef, watch, type Ref } from 'vue';
+import { computed, getCurrentScope, onScopeDispose, shallowRef, watch, type Ref } from 'vue';
 import { drawInRunCandidates, IN_RUN_TICKETS, operatorIdentity, type InRunDraw } from '../lib/in-run';
 import type { Rng } from '../lib/roll';
 import type { Operator, RollSettings } from '../lib/types';
@@ -23,7 +23,16 @@ export function useInRunRecruitment(
   rng: Rng = Math.random,
 ) {
   const session = shallowRef<RunSession | null>(null);
+  const removal = shallowRef<{ before: RunSession; name: string } | null>(null);
+  let removalTimeout: ReturnType<typeof setTimeout> | undefined;
+  function clearRemoval() {
+    if (removalTimeout !== undefined) clearTimeout(removalTimeout);
+    removalTimeout = undefined;
+    removal.value = null;
+  }
+  if (getCurrentScope()) onScopeDispose(clearRemoval);
   watch(confirmedStart, (start) => {
+    clearRemoval();
     if (!start || session.value?.start === start) return;
     const unique = [...new Map(start.operators.map((operator) => [operatorIdentity(operator), operator])).values()];
     session.value = { start, members: unique.map((operator) => ({ operator, source: 'start' })),
@@ -41,15 +50,19 @@ export function useInRunRecruitment(
   const candidates = computed(() => draw.value?.candidates.filter((operator) => !excludedKeys.value.has(operatorIdentity(operator))) ?? []);
   const chosen = computed(() => candidates.value.find((operator) => operator.id === current.value?.selectedId) ?? null);
   const message = computed(() => current.value?.message ?? '');
+  const canUndoRemoval = computed(() => Boolean(current.value && removal.value));
+  watch(settings, clearRemoval, { deep: true, flush: 'sync' });
 
   function update(patch: Partial<RunSession>) {
-    if (current.value) session.value = { ...current.value, ...patch };
+    if (!current.value) return;
+    clearRemoval();
+    session.value = { ...current.value, ...patch };
   }
   function drawTicket(id: string) {
     const ticket = IN_RUN_TICKETS.find((item) => item.id === id);
     if (!active.value || !ticket) return false;
     const next = drawInRunCandidates(operators, settings.value, ticket, excluded.value, rng);
-    update({ draw: next, selectedId: null, message: `${ticket.name}：提供 ${next.candidates.length} 名候选。` });
+    update({ draw: next, selectedId: null, message: '' });
     return true;
   }
   function selectCandidate(id: string) {
@@ -80,12 +93,27 @@ export function useInRunRecruitment(
   function removeMember(id: string) {
     const member = members.value.find((item) => item.operator.id === id);
     if (!member) return;
+    const before = current.value!;
     update({ members: members.value.filter((item) => item !== member), message: `已移除招募记录：${member.operator.name}。` });
+    rememberRemoval(before, member.operator.name);
   }
   function removeEmergency(id: string) {
     const operator = emergency.value.find((item) => item.id === id);
     if (!operator) return;
+    const before = current.value!;
     update({ emergency: emergency.value.filter((item) => item !== operator), message: `应急助力已移除：${operator.name}。` });
+    rememberRemoval(before, operator.name);
+  }
+  function rememberRemoval(before: RunSession, name: string) {
+    removal.value = { before, name };
+    removalTimeout = setTimeout(clearRemoval, 6000);
+  }
+  function undoRemoval() {
+    const previous = removal.value;
+    if (!current.value || !previous) return false;
+    clearRemoval();
+    session.value = { ...previous.before, message: `已恢复：${previous.name}。` };
+    return true;
   }
   function discardDraw() {
     update({ draw: null, selectedId: null, message: '已放弃本次招募。' });
@@ -94,8 +122,8 @@ export function useInRunRecruitment(
     const unavailable = new Set((kind === 'emergency' ? excluded.value : recruited.value).map(operatorIdentity));
     return operators.filter((operator) => !unavailable.has(operatorIdentity(operator)));
   }
-  return { active, members, emergency, recruited, sixStars, draw, candidates, chosen, message,
-    drawTicket, selectCandidate, confirmRecruit, register, removeMember, removeEmergency, discardDraw, registrationOptions };
+  return { active, members, emergency, recruited, sixStars, draw, candidates, chosen, message, canUndoRemoval,
+    drawTicket, selectCandidate, confirmRecruit, register, removeMember, removeEmergency, undoRemoval, discardDraw, registrationOptions };
 }
 
 export type InRunController = ReturnType<typeof useInRunRecruitment>;

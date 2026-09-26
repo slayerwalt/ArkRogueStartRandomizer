@@ -1,12 +1,13 @@
-import { ref } from 'vue';
+import { ref, shallowRef } from 'vue';
 import { describe, expect, it } from 'vitest';
 import { drawStartCandidates } from '../src/lib/candidate-start';
 import { useCandidateStart } from '../src/composables/useCandidateStart';
 import { useRandomizer } from '../src/composables/useRandomizer';
+import { useStartConfirmation } from '../src/composables/useStartConfirmation';
 import rawData from '../src/data/rogue-data.json';
 import { validateGameData } from '../src/lib/data';
 import { createDefaultSettings } from '../src/lib/settings';
-import type { Operator, RollSettings, Theme } from '../src/lib/types';
+import type { Operator, RollResult, RollSettings, Theme } from '../src/lib/types';
 
 function operator(id: string, profession: string, rarity = 6): Operator {
   return { id, name: id, profession, rarity, subProfession: '', hopeCost: 6, charDiscount: 0 };
@@ -60,6 +61,83 @@ function selectThree(app: ReturnType<typeof setup>) {
 }
 
 describe('候选开局会话', () => {
+  it('连续填写自动前进，指定券位替换保持券数并恢复下一个空位', () => {
+    const app = setup();
+    expect(app.professionSlot.value).toBe(0);
+    app.fillProfession('CASTER');
+    app.fillProfession('MEDIC');
+    expect(app.professionSlot.value).toBe(2);
+    app.selectProfessionSlot(0);
+    app.fillProfession('WARRIOR');
+    expect(app.professions.value).toEqual(['WARRIOR', 'MEDIC']);
+    expect(app.professionSlot.value).toBe(2);
+    app.fillProfession('CASTER');
+    expect(app.professionSlot.value).toBeNull();
+    app.fillProfession('MEDIC');
+    expect(app.professions.value).toEqual(['WARRIOR', 'MEDIC', 'CASTER']);
+    app.selectProfessionSlot(1);
+    app.fillProfession('CASTER');
+    expect(app.professions.value).toEqual(['WARRIOR', 'CASTER', 'CASTER']);
+    expect(app.professionSlot.value).toBeNull();
+    app.rollCandidates();
+    expect(app.draw.value!.candidates.filter((item) => item.profession === 'CASTER')).toHaveLength(6);
+    expect(app.draw.value!.candidates.filter((item) => item.profession === 'WARRIOR')).toHaveLength(3);
+  });
+
+  it('取消替换、移除和清空会恢复填写位置，非法选择不会改写招募券', () => {
+    const app = setup();
+    selectThree(app);
+    app.selectProfessionSlot(1);
+    app.selectProfessionSlot(1);
+    expect(app.professionSlot.value).toBeNull();
+    for (const index of [-1, 0.5, 3]) app.selectProfessionSlot(index);
+    expect(app.professionSlot.value).toBeNull();
+    app.selectProfessionSlot(1);
+    app.fillProfession('invalid');
+    expect(app.professions.value).toEqual(['CASTER', 'MEDIC', 'WARRIOR']);
+    expect(app.professionSlot.value).toBe(1);
+    app.removeProfession(0);
+    expect(app.professions.value).toEqual(['MEDIC', 'WARRIOR']);
+    expect(app.professionSlot.value).toBe(2);
+    app.fillProfession('CASTER');
+    expect(app.professions.value).toEqual(['MEDIC', 'WARRIOR', 'CASTER']);
+    app.selectProfessionSlot(2);
+    app.clearProfessions();
+    expect(app.professionSlot.value).toBe(0);
+    app.fillProfession('MEDIC');
+    expect(app.professions.value).toEqual(['MEDIC']);
+  });
+
+  it('已有候选时不可直接改券，重新填写后替换不影响已确认的本局快照', () => {
+    const app = setup();
+    const confirmation = useStartConfirmation(app.theme, app, shallowRef<RollResult | null>(null));
+    selectThree(app);
+    app.selectProfessionSlot(0);
+    app.rollCandidates();
+    const draw = app.draw.value!;
+    app.selectCandidate(draw.candidates[0].id);
+    expect(confirmation.confirmCandidate()).toBe(true);
+    const start = confirmation.confirmedStart.value;
+    const recruited = confirmation.recruited.value;
+    app.selectProfessionSlot(0);
+    app.fillProfession('MEDIC');
+    expect(app.professionSlot.value).toBeNull();
+    expect(app.professions.value).toEqual(['CASTER', 'MEDIC', 'WARRIOR']);
+    expect(app.draw.value).toBe(draw);
+    expect(app.confirmed.value).toBe(true);
+    app.editProfessions();
+    expect(app.draw.value).toBeNull();
+    expect(app.chosen.value).toBeNull();
+    expect(app.confirmed.value).toBe(false);
+    expect(app.professionSlot.value).toBeNull();
+    app.selectProfessionSlot(0);
+    app.fillProfession('MEDIC');
+    expect(app.professions.value).toEqual(['MEDIC', 'MEDIC', 'WARRIOR']);
+    expect(confirmation.confirmedStart.value).toBe(start);
+    expect(confirmation.recruited.value).toEqual(recruited);
+    expect(confirmation.candidateRegistered.value).toBe(false);
+  });
+
   it('指定分队保留候选和已确认起手，随机按钮状态随操作更新', () => {
     const app = setup();
     selectThree(app);

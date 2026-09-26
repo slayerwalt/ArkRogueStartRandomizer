@@ -11,11 +11,11 @@ defineProps<{ operators: readonly Operator[] }>();
       <h2 id="recruited-title">已招募干员</h2>
       <span>六星 {{ operators.length }} 名</span>
     </div>
-    <ul v-if="operators.length" class="recruited-list" aria-label="已招募六星干员">
+    <TransitionGroup v-if="operators.length" name="roster" tag="ul" class="recruited-list" aria-label="已招募六星干员">
       <li v-for="operator in operators" :key="operator.id" class="operator-tile">
         <OperatorPortrait :operator="operator" />
       </li>
-    </ul>
+    </TransitionGroup>
     <p v-else class="recruited-empty">
       暂无已招募的六星干员。
     </p>

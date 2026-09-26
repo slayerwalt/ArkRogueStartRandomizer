@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, nextTick, ref } from 'vue';
+import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue';
 import arknightsLogo from './assets/arknights-logo.svg';
 import rawData from './data/rogue-data.json';
 import rawChallenges from './data/challenge-pools.json';
@@ -13,10 +13,12 @@ import RecruitedOperators from './components/RecruitedOperators.vue';
 import SettingsPanel from './components/SettingsPanel.vue';
 import SquadCard from './components/SquadCard.vue';
 import StartOptions from './components/StartOptions.vue';
+import StartModeDialog from './components/StartModeDialog.vue';
 import { useRandomizer } from './composables/useRandomizer';
 import { useCandidateStart } from './composables/useCandidateStart';
 import { useRollSettings } from './composables/useRollSettings';
 import { useStartConfirmation } from './composables/useStartConfirmation';
+import { useStartMode, type StartMode } from './composables/useStartMode';
 import { useInRunRecruitment } from './composables/useInRunRecruitment';
 import { useChallenges } from './composables/useChallenges';
 import { readChallengePools, type ChallengePool } from './lib/challenges';
@@ -50,7 +52,9 @@ const theme = computed(() =>
 );
 const activeDialog = ref<'settings' | 'themes' | 'squad' | 'group' | null>(null);
 const { settings, storageNotice, pruneNotice, migrationNotice } = useRollSettings(operators);
-const startMode = ref<'candidates' | 'quick'>('candidates');
+const { mode: startMode, choose: chooseStartMode, restart: restartStartMode } = useStartMode(theme);
+const modeDialogOpen = ref(false);
+const startModeLabel = computed(() => startMode.value === 'candidates' ? '随心所欲开局' : '全随机开局');
 const candidateStart = useCandidateStart(theme, operators, settings);
 const {
   result,
@@ -65,12 +69,30 @@ const {
   rollSlot,
   selectSquad,
   selectGroup,
+  resetDraft: resetQuickDraft,
 } = useRandomizer(theme, operators, settings);
 const { confirmedStart, recruited, hasConfirmed, collapsed, candidateRegistered, quickRegistered,
   canConfirmQuick, toggleCollapsed, confirmCandidate, confirmQuick } = useStartConfirmation(theme, candidateStart, result);
 const inRun = useInRunRecruitment(operators, settings, confirmedStart);
 const challenges = useChallenges(theme, challengePools);
 const startToggle = ref<HTMLButtonElement>();
+const inRunPanel = ref<InstanceType<typeof InRunRecruitmentPanel>>();
+const boardExpanded = ref(false);
+const wideScreen = ref(false);
+let layoutQuery: MediaQueryList | undefined;
+const updateLayout = () => { wideScreen.value = layoutQuery?.matches ?? false; };
+watch(wideScreen, (wide) => {
+  if (!wide && document.getElementById('board-content')?.contains(document.activeElement)) boardExpanded.value = true;
+});
+onMounted(() => {
+  layoutQuery = window.matchMedia('(min-width: 1080px)');
+  updateLayout();
+  layoutQuery.addEventListener('change', updateLayout);
+});
+onUnmounted(() => layoutQuery?.removeEventListener('change', updateLayout));
+const currentStartRegistered = computed(() => startMode.value === 'candidates' ? candidateRegistered.value : quickRegistered.value);
+const startSummary = computed(() => currentStartRegistered.value
+  ? confirmedStart.value?.operators.map((operator) => operator.name).join(' · ') ?? '' : '');
 const choiceOptions = computed(() => activeDialog.value === 'group'
   ? (theme.value?.recruitGroups ?? []).map(({ id, name, desc }) => ({ id, name, desc }))
   : (theme.value?.squads ?? []).map(({ id, name }) => ({ id, name, icon: squadIcon(id) })));
@@ -79,13 +101,26 @@ const selectedChoiceId = computed(() => activeDialog.value === 'group'
   : (startMode.value === 'candidates' ? candidateStart.squad.value?.id : quickSquad.value?.id));
 const announcement = ref('');
 const isBlocked = computed(() => Boolean(blockReason.value));
+async function applyStartMode(mode: StartMode) {
+  const restarting = startMode.value !== null;
+  if (!(restarting ? restartStartMode(mode) : chooseStartMode(mode))) return;
+  if (restarting) {
+    candidateStart.resetDraft();
+    resetQuickDraft();
+  }
+  if (collapsed.value) toggleCollapsed();
+  modeDialogOpen.value = false;
+  announcement.value = `已选择${startModeLabel.value}`;
+  await nextTick();
+  startToggle.value?.focus();
+}
 async function finishStart(confirm: () => boolean) {
   if (!confirm()) return;
   announcement.value = recruited.value.length
     ? `已确认开局，已招募六星干员：${recruited.value.map((operator) => operator.name).join('、')}。随机开局已收起。`
     : '已确认开局，本次没有六星干员。随机开局已收起。';
   await nextTick();
-  startToggle.value?.focus();
+  inRunPanel.value?.focusHeading();
 }
 function run(action: () => void, message: string) {
   if (isBlocked.value) return;
@@ -165,41 +200,50 @@ function selectTheme(id: string) {
       <p>{{ loadError }}</p>
     </div>
     <template v-else-if="theme">
-      <section class="pool-summary" aria-label="干员随机范围设置">
-        <div>
-          <span class="pool-icon"><AppIcon name="sliders" /></span>
-          <div>
-            <strong>干员随机范围设置</strong>
-          </div>
+      <section class="workspace-toolbar" aria-label="本局操作">
+        <div class="session-phase" role="status">
+          <span class="phase-dot" :class="{ active: hasConfirmed }" aria-hidden="true"></span>
+          <strong>{{ hasConfirmed ? '探索进行中' : '开局准备' }}</strong>
+          <span v-if="hasConfirmed">已招募 {{ inRun.members.value.length }} 名</span>
         </div>
         <button
           class="button secondary"
           aria-haspopup="dialog"
+          aria-label="调整干员随机范围"
           @click="activeDialog = 'settings'"
         >
-          调整范围
-          <AppIcon name="chevron" />
+          <AppIcon name="sliders" />随机范围
         </button>
       </section>
       <p v-if="storageNotice || pruneNotice || migrationNotice" class="notice" role="status">
         {{ [storageNotice, pruneNotice, migrationNotice].filter(Boolean).join(' ') }}
       </p>
-      <RecruitedOperators :operators="inRun.sixStars.value" />
+      <div class="run-workspace">
+      <div id="mobile-board" class="board-slot"></div>
+      <div class="operation-column">
       <section class="results-section" :class="{ collapsed }" aria-labelledby="result-title">
+        <h2 v-if="!startMode" class="start-heading">
+          <button class="start-toggle start-entry" aria-label="选择开局方式" aria-haspopup="dialog" @click="modeDialogOpen = true">
+            <span id="result-title">随机开局</span>
+            <span class="start-toggle-hint">选择开局方式<AppIcon name="chevron" /></span>
+          </button>
+        </h2>
+        <template v-else>
+        <div class="start-heading-row">
         <h2 class="start-heading">
           <button ref="startToggle" class="start-toggle" :aria-expanded="!collapsed" aria-controls="start-content"
             :aria-label="collapsed ? '展开随机开局' : '收起随机开局'" @click="toggleCollapsed">
-            <span id="result-title">随机开局</span>
+            <span class="start-title-group"><span id="result-title">{{ startModeLabel }}</span><span v-if="collapsed && currentStartRegistered" class="start-complete">已确认</span></span>
             <span class="start-toggle-hint" aria-hidden="true">
               {{ collapsed ? '展开' : '收起' }}<AppIcon name="chevron" />
             </span>
           </button>
         </h2>
-        <div id="start-content" v-show="!collapsed" class="start-content">
-        <div class="start-mode-switch" role="group" aria-label="开局方式">
-          <button :aria-pressed="startMode === 'candidates'" @click="startMode = 'candidates'; announcement = ''">随心所欲开局</button>
-          <button :aria-pressed="startMode === 'quick'" @click="startMode = 'quick'; announcement = ''">全随机开局</button>
+        <button class="button secondary start-reset" aria-haspopup="dialog" @click="modeDialogOpen = true">重置开局</button>
         </div>
+        <p v-if="collapsed && startSummary" class="start-summary">{{ startSummary }}</p>
+        <Transition name="section-fold">
+        <div id="start-content" v-show="!collapsed" class="start-content">
         <CandidateStartPanel
           v-if="startMode === 'candidates'"
           :controller="candidateStart"
@@ -284,9 +328,34 @@ function selectTheme(id: string) {
         </template>
         <p v-if="hasConfirmed" class="result-footnote">重新确认其他开局会重置本局招募和应急助力名单。</p>
         </div>
+        </Transition>
+        </template>
       </section>
-      <InRunRecruitmentPanel :controller="inRun" />
-      <ChallengePanel :pools="challengePools" :controller="challenges" :error="challengeError" />
+      <InRunRecruitmentPanel ref="inRunPanel" :controller="inRun" />
+      </div>
+      <div id="desktop-board" class="board-slot"></div>
+      <Teleport defer :to="wideScreen ? '#desktop-board' : '#mobile-board'">
+      <aside class="run-board" aria-label="本局展板">
+        <div class="board-heading">
+          <div v-if="wideScreen" class="board-heading-copy">
+            <span class="board-mark" aria-hidden="true"><AppIcon name="grid" /></span>
+            <h2>本局展板</h2>
+            <span class="board-caption">{{ inRun.sixStars.value.length }} 名六星 · {{ challenges.selected.value.length }} 条挑战</span>
+          </div>
+          <button v-else class="board-toggle" :aria-expanded="boardExpanded" aria-controls="board-content" @click="boardExpanded = !boardExpanded">
+            <span class="board-heading-copy"><span class="board-mark" aria-hidden="true"><AppIcon name="grid" /></span><span class="board-title">本局展板</span><span class="board-caption">{{ inRun.sixStars.value.length }} 名六星 · {{ challenges.selected.value.length }} 条挑战</span></span>
+            <AppIcon name="chevron" :class="{ expanded: boardExpanded }" />
+          </button>
+        </div>
+        <Transition name="section-fold">
+          <div id="board-content" v-show="wideScreen || boardExpanded">
+            <RecruitedOperators :operators="inRun.sixStars.value" />
+            <ChallengePanel :pools="challengePools" :controller="challenges" :error="challengeError" />
+          </div>
+        </Transition>
+      </aside>
+      </Teleport>
+      </div>
     </template>
     <section v-else class="state-panel">
       <h2>当前主题暂未开放</h2>
@@ -307,6 +376,9 @@ function selectTheme(id: string) {
       {{ announcement }}
     </p>
   </main>
+
+  <StartModeDialog v-if="modeDialogOpen" :resetting="startMode !== null" :has-confirmed="hasConfirmed"
+    @confirm="applyStartMode" @close="modeDialogOpen = false" />
 
   <BaseDialog
     v-if="activeDialog"

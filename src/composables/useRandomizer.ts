@@ -124,6 +124,9 @@ export function useRandomizer(
     );
     update({ result: { ...current, slots } });
   }
+  function resetDraft() {
+    if (current.value) session.value = null;
+  }
   return {
     result,
     squad,
@@ -139,5 +142,6 @@ export function useRandomizer(
     rollSlot,
     selectSquad,
     selectGroup,
+    resetDraft,
   };
 }

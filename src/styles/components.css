@@ -1,31 +1,10 @@
-.start-mode-switch {
-  display: flex;
-  gap: 4px;
-  padding: 4px;
-  margin-bottom: 20px;
-  border-radius: var(--radius-small);
-  background: var(--background);
-}
-.start-mode-switch button {
-  flex: 1;
-  min-height: 44px;
-  border: 1px solid transparent;
-  border-radius: 6px;
-  background: transparent;
-  color: var(--muted);
-}
-.start-mode-switch button[aria-pressed='true'] {
-  border-color: var(--line);
-  background: var(--surface);
-  color: var(--primary);
-  font-weight: 600;
-}
-.start-mode-switch button:hover {
-  color: var(--primary);
-}
+.start-entry .start-toggle-hint .icon { transform: none; }
+.start-heading-row { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 16px; }
+.start-heading-row .start-heading { flex: 1; min-width: 190px; }
+.button.start-reset { flex-shrink: 0; min-height: 40px; padding: 8px 12px; font-size: 12px; }
 .full-start-actions {
   display: flex;
-  justify-content: flex-end;
+  justify-content: center;
   margin-bottom: 20px;
 }
 .recruited-section {
@@ -110,7 +89,7 @@
 }
 .quick-confirm {
   display: flex;
-  justify-content: flex-end;
+  justify-content: center;
   margin-top: 16px;
   padding-top: 16px;
   border-top: 1px solid var(--line);

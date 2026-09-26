@@ -1,5 +1,5 @@
-import { ref } from 'vue';
-import { describe, expect, it } from 'vitest';
+import { effectScope, ref } from 'vue';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import rawPools from '../src/data/challenge-pools.json';
 import { drawChallenge, readChallengePools, type ChallengePool, type ChallengeTerm } from '../src/lib/challenges';
 import { useChallenges } from '../src/composables/useChallenges';
@@ -43,6 +43,7 @@ describe('全随机挑战词条', () => {
 });
 
 describe('词条池会话', () => {
+  afterEach(() => vi.useRealTimers());
   it('每次追加一条，移除恢复资格，清空后重新开始', () => {
     const app = useChallenges(ref(theme()), pools, () => 0);
     const first = app.draw()!;
@@ -86,5 +87,80 @@ describe('词条池会话', () => {
     const empty = useChallenges(ref(theme()), [{ ...pools[0], terms: [] }]);
     expect(empty.canDraw.value).toBe(false);
     expect(empty.draw()).toBeNull();
+  });
+  it('撤销移除恢复原顺序与去重资格，撤销清空恢复整个列表', () => {
+    const app = useChallenges(ref(theme()), pools, () => 0);
+    const first = app.draw()!;
+    const second = app.draw()!;
+    app.remove(first.id);
+    expect(app.selected.value).toEqual([second]);
+    expect(app.canUndo.value).toBe(true);
+    app.undo();
+    expect(app.selected.value).toEqual([first, second]);
+    expect(app.canUndo.value).toBe(false);
+    const third = app.draw()!;
+    expect([first.id, second.id]).not.toContain(third.id);
+    app.clear();
+    expect(app.selected.value).toEqual([]);
+    expect(app.undoMessage.value).toBe('已清空 3 条词条');
+    app.undo();
+    expect(app.selected.value).toEqual([first, second, third]);
+    expect(app.remaining.value).toBe(pools[0].terms.length - 3);
+    expect(app.draw()!.id).not.toBe(first.id);
+    expect(new Set(app.selected.value.map((term) => term.id)).size).toBe(4);
+  });
+  it('只撤销最近一次移除，满六秒后过期，销毁作用域时清理计时器', () => {
+    vi.useFakeTimers();
+    const scope = effectScope();
+    const app = scope.run(() => useChallenges(ref(theme()), pools, () => 0))!;
+    const first = app.draw()!;
+    const second = app.draw()!;
+    app.remove(first.id);
+    vi.advanceTimersByTime(5000);
+    app.remove(second.id);
+    vi.advanceTimersByTime(1000);
+    expect(app.canUndo.value).toBe(true);
+    app.undo();
+    expect(app.selected.value).toEqual([second]);
+    app.undo();
+    expect(app.selected.value).toEqual([second]);
+    app.clear();
+    vi.advanceTimersByTime(5999);
+    expect(app.canUndo.value).toBe(true);
+    vi.advanceTimersByTime(1);
+    expect(app.canUndo.value).toBe(false);
+    app.undo();
+    expect(app.selected.value).toEqual([]);
+    app.draw();
+    app.clear();
+    expect(vi.getTimerCount()).toBe(1);
+    scope.stop();
+    expect(vi.getTimerCount()).toBe(0);
+    expect(app.canUndo.value).toBe(false);
+  });
+  it('后续抽取、切池与切主题都会立即使旧撤销失效', () => {
+    const secondPool: ChallengePool = { ...pools[0], id: 'second' };
+    const currentTheme = ref<Theme | null>(theme());
+    const app = useChallenges(currentTheme, [...pools, secondPool], () => 0);
+    const first = app.draw()!;
+    app.clear();
+    expect(app.canUndo.value).toBe(true);
+    expect(app.draw()).toEqual(first);
+    expect(app.canUndo.value).toBe(false);
+    app.undo();
+    expect(app.selected.value).toEqual([first]);
+    app.clear();
+    app.selectPool(secondPool.id);
+    expect(app.canUndo.value).toBe(false);
+    app.selectPool(pools[0].id);
+    app.undo();
+    expect(app.selected.value).toEqual([]);
+    app.draw();
+    app.clear();
+    currentTheme.value = { ...theme(), id: 'another-theme' };
+    currentTheme.value = theme();
+    expect(app.canUndo.value).toBe(false);
+    app.undo();
+    expect(app.selected.value).toEqual([]);
   });
 });
