@@ -73,12 +73,6 @@ function resetFilters() {
 }
 </script>
 <template>
-  <p class="settings-intro">
-    开局与局内抽取共用此设置。随心所欲开局使用六星名单，局内抽取使用五、六星名单；全随机开局使用四、五、六星名单，三星固定参与全随机开局。
-  </p>
-  <p class="settings-intro">
-    默认全部干员参与随机，点击卡片切换，高亮表示参与。设置仅影响后续随机。
-  </p>
   <div class="rarity-tabs" role="group" aria-label="选择星级">
     <button
       v-for="r in POOL_RARITIES"
@@ -119,10 +113,10 @@ function resetFilters() {
       :aria-label="`${rarity} 星全部干员范围操作`"
     >
       <button :aria-pressed="preset === 'all'" @click="choosePreset('all')">
-        全选
+        全选本星级
       </button>
       <button :aria-pressed="preset === 'none'" @click="choosePreset('none')">
-        清空
+        清空本星级
       </button>
     </div>
   </div>
@@ -131,7 +125,7 @@ function resetFilters() {
     {{ filtered.length }} 名
   </p>
   <p v-if="!selected.size" class="inline-warning">
-    此星级范围为空，请至少选择一名干员后再随机。
+    当前星级范围为空。
   </p>
   <div v-if="filtered.length" class="operator-groups">
     <section
@@ -165,7 +159,4 @@ function resetFilters() {
     <p>没有符合筛选条件的干员</p>
     <button class="button secondary" @click="resetFilters">清除筛选条件</button>
   </div>
-  <p class="settings-footnote">
-    “全选 / 清空”作用于当前星级的全部干员，不受搜索或职业筛选影响。
-  </p>
 </template>

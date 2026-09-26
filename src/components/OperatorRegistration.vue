@@ -19,9 +19,6 @@ const filtered = computed(() => props.operators.filter((operator) =>
 
 <template>
   <BaseDialog :title="titles[kind]" @close="$emit('close')">
-    <p class="settings-intro">
-      {{ kind === 'emergency' ? '选择应急助力干员，在列期间不参与随机；用完后可移除。' : '选择已实际招募的干员，登记后不再参与局内随机。有候选时，登记会结束本次招募。' }}
-    </p>
     <div class="filter-row">
       <label class="search-field">
         <AppIcon name="search" />

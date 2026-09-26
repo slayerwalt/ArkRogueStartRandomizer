@@ -14,8 +14,6 @@ const recentFirst = computed(() => [...selected.value].reverse());
     <h2 id="challenge-title" class="feature-title">随机词条</h2>
     <p v-if="error || !pools.length" class="inline-warning" role="status">{{ error || '暂无可用词条池。' }}</p>
     <template v-else-if="pool">
-      <p class="feature-description">每次等概率抽取1条，可连续追加，已抽词条不重复。移除或清空后可重新抽到。</p>
-      <p class="feature-note">词条作为挑战提示，具体限制由玩家自行执行。</p>
       <div class="challenge-pool-control">
         <label for="challenge-pool">词条池</label>
         <select id="challenge-pool" :value="selectedPoolId" @change="selectPool(($event.target as HTMLSelectElement).value)">

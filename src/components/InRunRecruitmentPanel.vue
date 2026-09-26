@@ -24,9 +24,8 @@ function register(id: string) {
 <template>
   <section class="feature-section" aria-labelledby="in-run-title">
     <h2 id="in-run-title" class="feature-title">局内随机干员</h2>
-    <p v-if="!active" class="feature-description">确认开局后，可按实际获得的招募券抽取局内候选。</p>
+    <p v-if="!active" class="feature-description">确认开局后可使用。</p>
     <template v-else>
-      <p class="feature-description">按招募券抽取候选，再确认一名干员。已招募和应急助力自动排除，是否招募由你根据当前希望判断。</p>
       <template v-if="!draw">
         <div v-for="group in ticketGroups" :key="group.name" class="ticket-group">
           <h3>{{ group.name }}</h3>
@@ -42,7 +41,7 @@ function register(id: string) {
           <span>{{ candidates.length }} 名候选</span>
         </div>
         <p v-if="candidates.length < draw.expectedCount" class="inline-warning" role="status">
-          {{ candidates.length ? `候选不足：应有 ${draw.expectedCount} 名，当前提供 ${candidates.length} 名；不跨职业或星级补齐。` : '当前券型没有可抽取干员，可核对随机范围和本局名单，或更换招募券。' }}
+          {{ candidates.length ? `候选不足：当前 ${candidates.length} / ${draw.expectedCount} 名。` : '当前券型暂无可抽取干员。' }}
         </p>
         <div class="in-run-candidates" role="group" aria-label="局内招募候选">
           <button v-for="operator in candidates" :key="operator.id" class="operator-tile"
@@ -51,7 +50,7 @@ function register(id: string) {
             <OperatorPortrait :operator="operator" :selected="chosen?.id === operator.id" />
           </button>
         </div>
-        <p class="selection-count">{{ chosen ? `已选：${chosen.name}` : '选择一名干员，或放弃本次招募。' }}</p>
+        <p class="selection-count">{{ chosen ? `已选：${chosen.name}` : '尚未选择干员' }}</p>
         <div class="feature-actions">
           <button class="button primary" :disabled="!chosen" @click="confirmRecruit">确认招募</button>
           <button class="button secondary" @click="drawTicket(draw.ticket.id)">重新抽取</button>
@@ -64,7 +63,6 @@ function register(id: string) {
           <button class="button secondary" aria-haspopup="dialog" @click="registrationKind = 'temporary'">临时招募</button>
           <button class="button secondary" aria-haspopup="dialog" @click="registrationKind = 'emergency'">应急助力</button>
         </div>
-        <p class="feature-note">自行搭配的开局干员可在此补录。临时招募加入本局名单，应急助力在列期间排除。</p>
       </div>
       <div v-if="emergency.length" class="run-emergency">
         <h3>应急助力</h3>
@@ -77,7 +75,6 @@ function register(id: string) {
       </div>
       <details class="run-management">
         <summary>本局招募名单管理</summary>
-        <p class="feature-note">所有星级的已招募干员都在此记录；移除后可重新参与随机。</p>
         <ul v-if="members.length" class="run-member-list" aria-label="本局已招募名单">
           <li v-for="member in members" :key="member.operator.id" class="run-member">
             <span>{{ member.operator.name }}<small>{{ sourceNames[member.source] }}</small></span>

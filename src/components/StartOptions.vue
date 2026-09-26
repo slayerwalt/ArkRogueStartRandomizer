@@ -9,7 +9,6 @@ defineEmits<{ select: [id: string] }>();
 </script>
 
 <template>
-  <p class="settings-intro">点击一项即可选定。</p>
   <div class="start-options">
     <button v-for="option in options" :key="option.id" class="start-option"
       :aria-label="option.name" :aria-pressed="option.id === selectedId" @click="$emit('select', option.id)">

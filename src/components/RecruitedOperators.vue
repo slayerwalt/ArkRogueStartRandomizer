@@ -2,7 +2,7 @@
 import type { Operator } from '../lib/types';
 import OperatorPortrait from './OperatorPortrait.vue';
 
-defineProps<{ operators: readonly Operator[]; confirmed: boolean }>();
+defineProps<{ operators: readonly Operator[] }>();
 </script>
 
 <template>
@@ -17,7 +17,7 @@ defineProps<{ operators: readonly Operator[]; confirmed: boolean }>();
       </li>
     </ul>
     <p v-else class="recruited-empty">
-      {{ confirmed ? '本局暂无已招募的六星干员。' : '确认开局后，六星干员会显示在这里。' }}
+      暂无已招募的六星干员。
     </p>
   </section>
 </template>

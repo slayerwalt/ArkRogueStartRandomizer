@@ -74,7 +74,7 @@ export function useInRunRecruitment(
     if (excludedKeys.value.has(key)) return false;
     update({ emergency: [...emergency.value, operator],
       selectedId: chosen.value && operatorIdentity(chosen.value) === key ? null : current.value!.selectedId,
-      message: `应急助力已登记：${operator.name}，在列期间不参与随机。` });
+      message: `应急助力已登记：${operator.name}。` });
     return true;
   }
   function removeMember(id: string) {
@@ -88,7 +88,7 @@ export function useInRunRecruitment(
     update({ emergency: emergency.value.filter((item) => item !== operator), message: `应急助力已移除：${operator.name}。` });
   }
   function discardDraw() {
-    update({ draw: null, selectedId: null, message: '已放弃本次招募，名单未增加。' });
+    update({ draw: null, selectedId: null, message: '已放弃本次招募。' });
   }
   function registrationOptions(kind: RegistrationKind) {
     const unavailable = new Set((kind === 'emergency' ? excluded.value : recruited.value).map(operatorIdentity));

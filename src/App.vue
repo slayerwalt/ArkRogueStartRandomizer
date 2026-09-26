@@ -6,7 +6,6 @@ import rawChallenges from './data/challenge-pools.json';
 import AppIcon from './components/AppIcon.vue';
 import BaseDialog from './components/BaseDialog.vue';
 import CandidateStartPanel from './components/CandidateStartPanel.vue';
-import IntroModal from './components/IntroModal.vue';
 import InRunRecruitmentPanel from './components/InRunRecruitmentPanel.vue';
 import ChallengePanel from './components/ChallengePanel.vue';
 import RecruitSlots from './components/RecruitSlots.vue';
@@ -49,7 +48,7 @@ const theme = computed(() =>
     ? (data?.themes.find((t) => t.id === selectedThemeId.value) ?? null)
     : null,
 );
-const activeDialog = ref<'settings' | 'themes' | 'help' | 'squad' | 'group' | null>(null);
+const activeDialog = ref<'settings' | 'themes' | 'squad' | 'group' | null>(null);
 const { settings, storageNotice, pruneNotice, migrationNotice } = useRollSettings(operators);
 const startMode = ref<'candidates' | 'quick'>('candidates');
 const candidateStart = useCandidateStart(theme, operators, settings);
@@ -131,14 +130,6 @@ function selectTheme(id: string) {
           <AppIcon name="grid" />
           切换主题
         </button>
-        <button
-          class="nav-button"
-          aria-haspopup="dialog"
-          @click="activeDialog = 'help'"
-        >
-          <AppIcon name="help" />
-          使用说明
-        </button>
       </nav>
     </div>
   </header>
@@ -179,7 +170,6 @@ function selectTheme(id: string) {
           <span class="pool-icon"><AppIcon name="sliders" /></span>
           <div>
             <strong>干员随机范围设置</strong>
-            <p class="summary-extra">开局与局内抽取共用</p>
           </div>
         </div>
         <button
@@ -194,7 +184,7 @@ function selectTheme(id: string) {
       <p v-if="storageNotice || pruneNotice || migrationNotice" class="notice" role="status">
         {{ [storageNotice, pruneNotice, migrationNotice].filter(Boolean).join(' ') }}
       </p>
-      <RecruitedOperators :operators="inRun.sixStars.value" :confirmed="hasConfirmed" />
+      <RecruitedOperators :operators="inRun.sixStars.value" />
       <section class="results-section" :class="{ collapsed }" aria-labelledby="result-title">
         <h2 class="start-heading">
           <button ref="startToggle" class="start-toggle" :aria-expanded="!collapsed" aria-controls="start-content"
@@ -206,10 +196,6 @@ function selectTheme(id: string) {
           </button>
         </h2>
         <div id="start-content" v-show="!collapsed" class="start-content">
-        <div class="start-mode-description">
-          <p><strong>随心所欲开局：</strong>对应游戏中的“随心所欲”，按实际获得的三张随机招募券填写职业，再从抽出的六星干员中选择一名起手。</p>
-          <p><strong>全随机开局：</strong>直接随机分队、招募组合和全部开局干员。</p>
-        </div>
         <div class="start-mode-switch" role="group" aria-label="开局方式">
           <button :aria-pressed="startMode === 'candidates'" @click="startMode = 'candidates'; announcement = ''">随心所欲开局</button>
           <button :aria-pressed="startMode === 'quick'" @click="startMode = 'quick'; announcement = ''">全随机开局</button>
@@ -285,20 +271,15 @@ function selectTheme(id: string) {
             @settings="activeDialog = 'settings'"
           />
           <div class="quick-confirm">
-            <p>{{ quickRegistered ? '本次开局已确认。' : '确认后登记全部开局干员，并收起开局卡片。' }}</p>
             <button class="button primary" :disabled="!canConfirmQuick || quickRegistered"
               @click="finishStart(confirmQuick)">
               {{ quickRegistered ? '已确认开局' : '确认开局' }}
             </button>
           </div>
           <p v-if="!canConfirmQuick" class="inline-warning">请先补齐所有券位的干员，再确认开局。</p>
-          <p class="result-footnote">
-            点击干员可重抽该券位。选择或随机分队、组合会重新生成全部券位；“重新随机全部”会重新抽取分队、组合与干员。
-          </p>
         </template>
         <div v-else class="welcome-panel">
           <h3>暂无随机结果</h3>
-          <p>可先选择或随机分队、招募组合，再点击“开始随机”生成干员；未选项目会自动随机。</p>
         </div>
         </template>
         <p v-if="hasConfirmed" class="result-footnote">重新确认其他开局会重置本局招募和应急助力名单。</p>
@@ -336,9 +317,7 @@ function selectTheme(id: string) {
           ? '选择肉鸽主题'
           : activeDialog === 'squad'
             ? '选择分队'
-            : activeDialog === 'group'
-              ? '选择招募组合'
-              : '使用说明'
+            : '选择招募组合'
     "
     :drawer="activeDialog === 'settings'"
     @close="activeDialog = null"
@@ -367,9 +346,8 @@ function selectTheme(id: string) {
         </span>
       </button>
     </div>
-    <StartOptions v-else-if="activeDialog === 'squad' || activeDialog === 'group'"
+    <StartOptions v-else
       :options="choiceOptions" :selected-id="selectedChoiceId" @select="chooseStartOption" />
-    <IntroModal v-else />
     <template #footer>
       <span v-if="activeDialog === 'settings'">
         {{ storageNotice ? '仅保存于本次会话' : '设置自动保存' }}
