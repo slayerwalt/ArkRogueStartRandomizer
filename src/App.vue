@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue';
-import arknightsLogo from './assets/arknights-logo.svg';
+import rolllikeLogo from './assets/brand/rolllike-logo-v1.png';
 import rawData from './data/rogue-data.json';
 import rawChallenges from './data/challenge-pools.json';
 import AppIcon from './components/AppIcon.vue';
@@ -153,8 +153,8 @@ function selectTheme(id: string) {
   <header class="site-header">
     <div class="header-inner">
       <div class="brand">
-        <span class="brand-symbol"><AppIcon name="shuffle" /></span>
-        <span class="brand-name">明日方舟集成战略随机工具</span>
+        <img class="brand-logo" :src="rolllikeLogo" alt="RollLike" width="168" height="56" />
+        <span class="brand-caption">随机工具</span>
       </div>
       <nav aria-label="工具导航">
         <button
@@ -367,8 +367,8 @@ function selectTheme(id: string) {
     </section>
     <footer class="site-footer">
       <span class="footer-brand">
-        <img :src="arknightsLogo" alt="明日方舟" width="78" height="24" />
-        集成战略随机工具
+        <img :src="rolllikeLogo" alt="RollLike" width="120" height="40" loading="lazy" />
+        随机工具
       </span>
       <span>非官方玩家工具</span>
     </footer>

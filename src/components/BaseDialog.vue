@@ -64,7 +64,7 @@ function trapFocus(event: KeyboardEvent) {
     >
       <header class="dialog-header">
         <div>
-          <span class="eyebrow">明日方舟集成战略随机工具</span>
+          <span class="eyebrow">RollLike · 随机工具</span>
           <h2>{{ title }}</h2>
         </div>
         <button

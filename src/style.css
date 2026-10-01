@@ -112,25 +112,17 @@ p {
   align-items: center;
   gap: 12px;
 }
-.brand-symbol {
+.brand-logo {
   flex: 0 0 auto;
-  width: 40px;
-  height: 40px;
-  display: grid;
-  place-items: center;
-  background: var(--ink);
-  color: white;
-  border-radius: 11px;
-}
-.brand-symbol .icon {
-  width: 23px;
-  height: 23px;
-}
-.brand-name {
-  font-size: 17px;
-  font-weight: 700;
+  width: 168px;
+  height: 56px;
+  object-fit: contain;
   display: block;
-  letter-spacing: 0.5px;
+}
+.brand-caption {
+  font-size: 12px;
+  color: var(--muted);
+  letter-spacing: 2px;
   white-space: nowrap;
 }
 nav {
@@ -346,9 +338,10 @@ nav {
   gap: 12px;
 }
 .footer-brand img {
-  filter: brightness(0);
-  opacity: 0.55;
+  width: 120px;
+  height: 40px;
   object-fit: contain;
+  flex: 0 0 auto;
 }
 .notice {
   background: var(--hope-soft);
@@ -391,12 +384,13 @@ nav {
   .brand {
     gap: 8px;
   }
-  .brand-symbol {
-    width: 34px;
-    height: 34px;
+  .brand-logo {
+    width: 120px;
+    height: 40px;
   }
-  .brand-name {
-    font-size: 15px;
+  .brand-caption {
+    font-size: 11px;
+    letter-spacing: 1px;
   }
   nav {
     gap: 0;
