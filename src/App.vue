@@ -332,6 +332,7 @@ function selectTheme(id: string) {
         </template>
       </section>
       <InRunRecruitmentPanel ref="inRunPanel" :controller="inRun" />
+      <ChallengePanel :pools="challengePools" :controller="challenges" :error="challengeError" />
       </div>
       <div id="desktop-board" class="board-slot"></div>
       <Teleport defer :to="wideScreen ? '#desktop-board' : '#mobile-board'">
@@ -340,17 +341,16 @@ function selectTheme(id: string) {
           <div v-if="wideScreen" class="board-heading-copy">
             <span class="board-mark" aria-hidden="true"><AppIcon name="grid" /></span>
             <h2>本局展板</h2>
-            <span class="board-caption">{{ inRun.sixStars.value.length }} 名六星 · {{ challenges.selected.value.length }} 条挑战</span>
+            <span class="board-caption">{{ inRun.sixStars.value.length }} 名六星</span>
           </div>
           <button v-else class="board-toggle" :aria-expanded="boardExpanded" aria-controls="board-content" @click="boardExpanded = !boardExpanded">
-            <span class="board-heading-copy"><span class="board-mark" aria-hidden="true"><AppIcon name="grid" /></span><span class="board-title">本局展板</span><span class="board-caption">{{ inRun.sixStars.value.length }} 名六星 · {{ challenges.selected.value.length }} 条挑战</span></span>
+            <span class="board-heading-copy"><span class="board-mark" aria-hidden="true"><AppIcon name="grid" /></span><span class="board-title">本局展板</span><span class="board-caption">{{ inRun.sixStars.value.length }} 名六星</span></span>
             <AppIcon name="chevron" :class="{ expanded: boardExpanded }" />
           </button>
         </div>
         <Transition name="section-fold">
           <div id="board-content" v-show="wideScreen || boardExpanded">
             <RecruitedOperators :operators="inRun.sixStars.value" />
-            <ChallengePanel :pools="challengePools" :controller="challenges" :error="challengeError" />
           </div>
         </Transition>
       </aside>

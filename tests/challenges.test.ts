@@ -18,23 +18,26 @@ describe('全随机挑战词条', () => {
     const selected = pool.terms.map((_, index) => drawChallenge(pool, [], () => (index + 0.5) / pool.terms.length)!.id);
     expect(new Set(selected).size).toBe(161);
   });
-  it('本轮去重，耗尽返回空；抽取不会修改池和历史', () => {
-    const before = JSON.stringify(pools);
+  it.each(pools)('$name 本轮去重，耗尽返回空；抽取不会修改池和历史', (pool) => {
+    const before = JSON.stringify(pool);
     const selected: ChallengeTerm[] = [];
-    for (let i = 0; i < pools[0].terms.length; i++) {
+    for (let i = 0; i < pool.terms.length; i++) {
       const length = selected.length;
-      const term = drawChallenge(pools[0], selected, () => 0)!;
+      const term = drawChallenge(pool, selected, () => 0)!;
       expect(selected).toHaveLength(length);
       selected.push(term);
     }
-    expect(new Set(selected.map((term) => term.id)).size).toBe(161);
-    expect(drawChallenge(pools[0], selected)).toBeNull();
-    expect(JSON.stringify(pools)).toBe(before);
+    expect(new Set(selected.map((term) => term.id)).size).toBe(pool.terms.length);
+    expect(drawChallenge(pool, selected)).toBeNull();
+    expect(JSON.stringify(pool)).toBe(before);
   });
   it('校验限制类型、重复标识与来源地址，并合并同含义重复词条', () => {
     const raw = { schemaVersion: 1, pools: [{ id: 'p', name: '池', source: { url: 'https://example.com' },
       groups: [{ id: 'g', restriction: 'forbid', terms: ['医疗', '医疗'] }] }] };
     expect(readChallengePools(raw)[0].terms).toHaveLength(1);
+    const required = { ...raw, pools: [{ ...raw.pools[0], groups: [...raw.pools[0].groups,
+      { id: 'requirements', restriction: 'require', terms: ['医疗', '医疗'] }] }] };
+    expect(readChallengePools(required)[0].terms.map((term) => term.restriction)).toEqual(['forbid', 'require']);
     expect(() => readChallengePools({ ...raw, schemaVersion: 9 })).toThrow();
     expect(() => readChallengePools({ ...raw, pools: [raw.pools[0], raw.pools[0]] })).toThrow();
     expect(() => readChallengePools({ ...raw, pools: [{ ...raw.pools[0], source: { url: 'javascript:alert(1)' } }] })).toThrow();

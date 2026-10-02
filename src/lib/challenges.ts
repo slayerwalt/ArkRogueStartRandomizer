@@ -1,9 +1,11 @@
 import { pickOne, type Rng } from './roll';
 
+export const CHALLENGE_RESTRICTION_LABELS = { forbid: '禁用', allow: '仅限', require: '要求' } as const;
+
 export interface ChallengeTerm {
   id: string;
   text: string;
-  restriction: 'forbid' | 'allow';
+  restriction: keyof typeof CHALLENGE_RESTRICTION_LABELS;
 }
 export interface ChallengePool {
   id: string;
@@ -40,7 +42,7 @@ export function readChallengePools(raw: unknown): ChallengePool[] {
       if (groupIds.has(groupId)) throw new Error('词条分组标识重复');
       groupIds.add(groupId);
       const restriction = group.restriction;
-      if (restriction !== 'forbid' && restriction !== 'allow') throw new Error('词条限制类型错误');
+      if (restriction !== 'forbid' && restriction !== 'allow' && restriction !== 'require') throw new Error('词条限制类型错误');
       if (!Array.isArray(group.terms)) throw new Error('词条列表错误');
       return group.terms.map((text, index) => ({ id: `${id}:${groupId}:${index}`, text: nonempty(text), restriction }));
     });

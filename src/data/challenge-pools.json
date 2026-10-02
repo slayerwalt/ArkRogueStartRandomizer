@@ -3,7 +3,7 @@
   "pools": [
     {
       "id": "bilibili-mrfz-2026-09-23",
-      "name": "B站随机挑战生成器",
+      "name": "通用挑战",
       "source": {
         "url": "https://www.bilibili.com/toy/MRFZ/index.html",
         "pageVersion": "V3.0",
@@ -66,6 +66,51 @@
           "terms": [
             "光着脚", "穿短袜", "穿黑丝", "穿白丝", "穿高跟鞋", "穿板鞋", "穿拖鞋", "穿长筒靴", "穿吊带",
             "猫耳", "兔耳", "女仆装", "穿制服", "穿泳装", "露肩装", "腰细", "大长腿"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "blackforest-personal-2026-10-02",
+      "name": "树海个人挑战",
+      "source": {
+        "url": "https://live.bilibili.com/blackboard/era/5sWSFsRb4xZZ2hHC.html",
+        "capturedOn": "2026-10-01"
+      },
+      "groups": [
+        {
+          "id": "difficulty",
+          "restriction": "require",
+          "terms": [
+            "本局使用 N15 难度。"
+          ]
+        },
+        {
+          "id": "trading",
+          "restriction": "require",
+          "terms": [
+            "获得自然物“板藤”后，在随后首次进入的秘境行商或诡意行商中立即抛售；若在行商内获得，也须立即抛售。若抛售导致估价上涨，离开该商店前须将其丢弃。"
+          ]
+        },
+        {
+          "id": "submission",
+          "restriction": "forbid",
+          "terms": [
+            "在“命运所指”节点提交【击坠“神明”】、【湮没“光明”】、【焚毁“文明”】、【源私钥】。"
+          ]
+        },
+        {
+          "id": "selection",
+          "restriction": "forbid",
+          "terms": [
+            "主动选择【复得之轮】或【果腹】；系统强制给予时允许使用。"
+          ]
+        },
+        {
+          "id": "ending",
+          "restriction": "require",
+          "terms": [
+            "通关时至少持有【沙盘α】或【沙盘β】之一。第五层选择＜痛苦将息＞路线时，须先在“命运所指”选择“找出声音的源头”；同时持有两个沙盘时，免除此路线要求。"
           ]
         }
       ]
