@@ -6,11 +6,12 @@ import AppIcon from './AppIcon.vue';
 defineProps<{
   operator: Pick<Operator, 'id' | 'name' | 'rarity'>;
   selected?: boolean;
+  compact?: boolean;
 }>();
 </script>
 
 <template>
-  <span class="operator-portrait" :class="{ selected }" :data-rarity="operator.rarity"
+  <span class="operator-portrait" :class="{ selected, compact }" :data-rarity="operator.rarity"
     :title="`${operator.name} · ${operator.rarity} 星`">
     <OperatorAvatar :id="operator.id" :name="operator.name" />
     <span v-if="selected" class="portrait-check" aria-hidden="true"><AppIcon name="check" /></span>
@@ -70,4 +71,7 @@ defineProps<{
   text-decoration: underline;
   text-underline-offset: 3px;
 }
+.operator-portrait.compact { gap: 4px; }
+.compact :deep(.avatar-frame) { width: 44px; border-radius: 4px; }
+.compact .portrait-name { min-height: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; line-height: 1.4; }
 </style>

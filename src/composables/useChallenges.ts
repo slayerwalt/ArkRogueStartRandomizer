@@ -1,15 +1,17 @@
-import { computed, getCurrentScope, onScopeDispose, ref, shallowRef, watch, type Ref } from 'vue';
-import { drawChallenge, type ChallengePool, type ChallengeTerm } from '../lib/challenges';
+import { computed, getCurrentScope, onScopeDispose, shallowRef, watch, type Ref } from 'vue';
+import { availableChallengeTerms, drawChallenge, mergeChallengeTerms, type ChallengePool, type ChallengeTerm } from '../lib/challenges';
 import type { Rng } from '../lib/roll';
 import type { Theme } from '../lib/types';
 
 export function useChallenges(theme: Readonly<Ref<Theme | null>>, pools: readonly ChallengePool[], rng: Rng = Math.random) {
-  const selectedPoolId = ref(pools[0]?.id ?? '');
+  const selectedPoolIds = shallowRef<string[]>(pools.length ? [pools[0].id] : []);
   const records = shallowRef<Record<string, ChallengeTerm[]>>({});
-  const pool = computed(() => pools.find((item) => item.id === selectedPoolId.value) ?? null);
-  const key = computed(() => theme.value && pool.value ? JSON.stringify([theme.value.id, pool.value.id]) : null);
+  const selectedPools = computed(() => pools.filter((item) => selectedPoolIds.value.includes(item.id)));
+  const terms = computed(() => mergeChallengeTerms(selectedPools.value));
+  const total = computed(() => terms.value.length);
+  const key = computed(() => theme.value?.id ?? null);
   const selected = computed(() => key.value ? records.value[key.value] ?? [] : []);
-  const remaining = computed(() => pool.value ? pool.value.terms.length - selected.value.length : 0);
+  const remaining = computed(() => availableChallengeTerms(terms.value, selected.value).length);
   const canDraw = computed(() => Boolean(key.value && remaining.value));
   const lastDrawn = computed(() => selected.value.at(-1) ?? null);
   const undoRecord = shallowRef<{ key: string; terms: ChallengeTerm[]; message: string } | null>(null);
@@ -32,14 +34,18 @@ export function useChallenges(theme: Readonly<Ref<Theme | null>>, pools: readonl
   function update(terms: ChallengeTerm[]) {
     if (key.value) records.value = { ...records.value, [key.value]: terms };
   }
-  function selectPool(id: string) {
-    if (pools.some((item) => item.id === id)) selectedPoolId.value = id;
+  function togglePool(id: string) {
+    if (!pools.some((item) => item.id === id)) return;
+    selectedPoolIds.value = selectedPoolIds.value.includes(id)
+      ? selectedPoolIds.value.filter((item) => item !== id)
+      : [...selectedPoolIds.value, id];
   }
   function draw() {
+    if (!canDraw.value) return null;
+    const term = drawChallenge(terms.value, selected.value, rng);
+    if (!term) return null;
     dismissUndo();
-    if (!canDraw.value || !pool.value) return null;
-    const term = drawChallenge(pool.value, selected.value, rng);
-    if (term) update([...selected.value, term]);
+    update([...selected.value, term]);
     return term;
   }
   function remove(id: string) {
@@ -57,7 +63,7 @@ export function useChallenges(theme: Readonly<Ref<Theme | null>>, pools: readonl
     update(undoRecord.value.terms);
     dismissUndo();
   }
-  return { selectedPoolId, pool, selected, remaining, canDraw, lastDrawn, canUndo, undoMessage, selectPool, draw, remove, clear, undo };
+  return { selectedPoolIds, selectedPools, selected, total, remaining, canDraw, lastDrawn, canUndo, undoMessage, togglePool, draw, remove, clear, undo };
 }
 
 export type ChallengeController = ReturnType<typeof useChallenges>;

@@ -1,12 +1,29 @@
 import { effectScope, ref } from 'vue';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import rawPools from '../src/data/challenge-pools.json';
-import { drawChallenge, readChallengePools, type ChallengePool, type ChallengeTerm } from '../src/lib/challenges';
+import { drawChallenge, mergeChallengeTerms, readChallengePools, type ChallengePool, type ChallengeTerm } from '../src/lib/challenges';
 import { useChallenges } from '../src/composables/useChallenges';
 import type { Theme } from '../src/lib/types';
 
 const pools = readChallengePools(rawPools);
 const theme = (): Theme => ({ id: 'rogue_6', name: '黑流树海', squads: [], recruitGroups: [] });
+const mixedPools: ChallengePool[] = [
+  {
+    id: 'first', name: '第一个池', sourceUrl: 'https://example.com/first',
+    terms: [
+      { id: 'first:medical', text: '医疗', restriction: 'forbid' },
+      { id: 'first:level', text: 'N15', restriction: 'require' },
+    ],
+  },
+  {
+    id: 'second', name: '第二个池', sourceUrl: 'https://example.com/second',
+    terms: [
+      { id: 'second:medical', text: '医疗', restriction: 'forbid' },
+      { id: 'second:medical-only', text: '医疗', restriction: 'allow' },
+      { id: 'second:pioneer', text: '先锋', restriction: 'forbid' },
+    ],
+  },
+];
 
 describe('全随机挑战词条', () => {
   it('加载现有161条和来源，保留禁用与仅限语义，不按原分组加权', () => {
@@ -15,7 +32,7 @@ describe('全随机挑战词条', () => {
     expect(pool.sourceUrl).toBe('https://www.bilibili.com/toy/MRFZ/index.html');
     expect(pool.terms.find((term) => term.text === '医疗')?.restriction).toBe('forbid');
     expect(pool.terms.find((term) => term.text === '光着脚')?.restriction).toBe('allow');
-    const selected = pool.terms.map((_, index) => drawChallenge(pool, [], () => (index + 0.5) / pool.terms.length)!.id);
+    const selected = pool.terms.map((_, index) => drawChallenge(pool.terms, [], () => (index + 0.5) / pool.terms.length)!.id);
     expect(new Set(selected).size).toBe(161);
   });
   it.each(pools)('$name 本轮去重，耗尽返回空；抽取不会修改池和历史', (pool) => {
@@ -23,12 +40,12 @@ describe('全随机挑战词条', () => {
     const selected: ChallengeTerm[] = [];
     for (let i = 0; i < pool.terms.length; i++) {
       const length = selected.length;
-      const term = drawChallenge(pool, selected, () => 0)!;
+      const term = drawChallenge(pool.terms, selected, () => 0)!;
       expect(selected).toHaveLength(length);
       selected.push(term);
     }
     expect(new Set(selected.map((term) => term.id)).size).toBe(pool.terms.length);
-    expect(drawChallenge(pool, selected)).toBeNull();
+    expect(drawChallenge(pool.terms, selected)).toBeNull();
     expect(JSON.stringify(pool)).toBe(before);
   });
   it('校验限制类型、重复标识与来源地址，并合并同含义重复词条', () => {
@@ -45,8 +62,57 @@ describe('全随机挑战词条', () => {
   });
 });
 
+describe('合并多个词条池', () => {
+  it('按限制类型和文本合并重复项，同文不同限制仍分别保留，且不修改原池', () => {
+    const before = JSON.stringify(mixedPools);
+    const terms = mergeChallengeTerms(mixedPools);
+    expect(terms.map(({ restriction, text }) => [restriction, text])).toEqual([
+      ['forbid', '医疗'], ['require', 'N15'], ['allow', '医疗'], ['forbid', '先锋'],
+    ]);
+    expect(mergeChallengeTerms([])).toEqual([]);
+    expect(JSON.stringify(mixedPools)).toBe(before);
+  });
+  it('合并池的随机数两端可命中两个池，各独立词条占相同的随机区间', () => {
+    const terms = mergeChallengeTerms(mixedPools);
+    expect(drawChallenge(terms, [], () => 0)).toMatchObject({ text: '医疗', restriction: 'forbid' });
+    expect(drawChallenge(terms, [], () => 1 - Number.EPSILON)).toMatchObject({ text: '先锋', restriction: 'forbid' });
+    const drawn = [0.125, 0.375, 0.625, 0.875].map((value) => {
+      const term = drawChallenge(terms, [], () => value)!;
+      return [term.restriction, term.text];
+    });
+    expect(drawn).toEqual([
+      ['forbid', '医疗'], ['require', 'N15'], ['allow', '医疗'], ['forbid', '先锋'],
+    ]);
+  });
+  it('已抽词条即使来自另一个池且id不同也不能重复抽，同文不同限制仍可抽', () => {
+    const used = [mixedPools[0].terms[0]];
+    const terms = mixedPools[1].terms;
+    expect(drawChallenge(terms, used, () => 0)).toEqual(mixedPools[1].terms[1]);
+    expect(drawChallenge([terms[0]], used)).toBeNull();
+    expect(drawChallenge([], used)).toBeNull();
+    expect(used).toEqual([mixedPools[0].terms[0]]);
+  });
+});
+
 describe('词条池会话', () => {
+  beforeEach(() => vi.useFakeTimers());
   afterEach(() => vi.useRealTimers());
+  it('默认选第一个池，支持多选与取消，忽略无效池标识', () => {
+    const app = useChallenges(ref(theme()), mixedPools, () => 0);
+    expect(app.selectedPoolIds.value).toEqual(['first']);
+    expect(app.selectedPools.value).toEqual([mixedPools[0]]);
+    expect(app.total.value).toBe(2);
+    app.togglePool('second');
+    expect(app.selectedPoolIds.value).toEqual(['first', 'second']);
+    expect(app.selectedPools.value).toEqual(mixedPools);
+    expect(app.total.value).toBe(4);
+    app.togglePool('invalid');
+    expect(app.selectedPoolIds.value).toEqual(['first', 'second']);
+    app.togglePool('first');
+    expect(app.selectedPoolIds.value).toEqual(['second']);
+    expect(app.selectedPools.value).toEqual([mixedPools[1]]);
+    expect(app.total.value).toBe(3);
+  });
   it('每次追加一条，移除恢复资格，清空后重新开始', () => {
     const app = useChallenges(ref(theme()), pools, () => 0);
     const first = app.draw()!;
@@ -59,35 +125,87 @@ describe('词条池会话', () => {
     expect(app.selected.value).toEqual([]);
     expect(app.remaining.value).toBe(161);
   });
-  it('不同词条池与主题分开保留记录，切换不清空也不串池', () => {
-    const second: ChallengePool = { id: 'second', name: '另一词条池', sourceUrl: 'https://example.com',
-      terms: [{ id: 'second:1', text: '医疗', restriction: 'allow' }] };
-    const currentTheme = ref<Theme | null>(theme());
-    const app = useChallenges(currentTheme, [...pools, second], () => 0);
-    const first = app.draw();
-    app.selectPool(second.id);
-    expect(app.selected.value).toEqual([]);
-    app.draw();
+  it('切换选池保留全部已抽列表并继续去重，耗尽按当前合并池计算', () => {
+    const app = useChallenges(ref(theme()), mixedPools, () => 0);
+    const first = app.draw()!;
+    app.togglePool('second');
+    app.togglePool('first');
+    expect(app.selected.value).toEqual([first]);
+    expect(app.lastDrawn.value).toEqual(first);
+    expect(app.total.value).toBe(3);
+    expect(app.remaining.value).toBe(2);
+    const second = app.draw()!;
+    expect(second).toEqual(mixedPools[1].terms[1]);
+    app.togglePool('first');
+    expect(app.selected.value).toEqual([first, second]);
+    expect(app.total.value).toBe(4);
+    expect(app.remaining.value).toBe(2);
+    const third = app.draw()!;
+    const fourth = app.draw()!;
+    expect(third).toEqual(mixedPools[0].terms[1]);
+    expect(fourth).toEqual(mixedPools[1].terms[2]);
+    expect(app.remaining.value).toBe(0);
     expect(app.canDraw.value).toBe(false);
     expect(app.draw()).toBeNull();
+    app.togglePool('second');
+    expect(app.total.value).toBe(2);
+    expect(app.remaining.value).toBe(0);
+    expect(app.selected.value).toEqual([first, second, third, fourth]);
+    app.togglePool('second');
+    expect(app.draw()).toBeNull();
+    expect(app.selected.value).toHaveLength(4);
+  });
+  it('主题之间独立保留混池记录，未开放主题不能抽取', () => {
+    const currentTheme = ref<Theme | null>(theme());
+    const app = useChallenges(currentTheme, mixedPools, () => 0);
+    const first = app.draw()!;
+    app.togglePool('second');
+    const second = app.draw()!;
     currentTheme.value = { ...theme(), id: 'another-theme' };
     expect(app.selected.value).toEqual([]);
-    app.draw();
+    expect(app.lastDrawn.value).toBeNull();
+    expect(app.remaining.value).toBe(4);
+    const otherThemeTerm = app.draw()!;
     currentTheme.value = null;
+    expect(app.selected.value).toEqual([]);
     expect(app.canDraw.value).toBe(false);
     expect(app.draw()).toBeNull();
     currentTheme.value = theme();
-    expect(app.selected.value).toEqual(second.terms);
-    app.selectPool(pools[0].id);
-    expect(app.selected.value).toEqual([first]);
-    app.selectPool('invalid');
-    expect(app.pool.value?.id).toBe(pools[0].id);
+    expect(app.selected.value).toEqual([first, second]);
+    expect(app.lastDrawn.value).toEqual(second);
+    expect(app.remaining.value).toBe(2);
+    currentTheme.value = { ...theme(), id: 'another-theme' };
+    expect(app.selected.value).toEqual([otherThemeTerm]);
   });
-  it('空池和无可用池时禁用抽取', () => {
+  it('全部取消选池时禁抽但不隐藏历史，重新选池后仍排除已抽项', () => {
+    const rng = vi.fn(() => 0);
+    const app = useChallenges(ref(theme()), mixedPools, rng);
+    const first = app.draw()!;
+    app.togglePool('first');
+    expect(app.selectedPoolIds.value).toEqual([]);
+    expect(app.selectedPools.value).toEqual([]);
+    expect(app.total.value).toBe(0);
+    expect(app.remaining.value).toBe(0);
+    expect(app.canDraw.value).toBe(false);
+    expect(app.draw()).toBeNull();
+    expect(rng).toHaveBeenCalledTimes(1);
+    expect(app.selected.value).toEqual([first]);
+    expect(app.lastDrawn.value).toEqual(first);
+    app.togglePool('first');
+    expect(app.remaining.value).toBe(1);
+    expect(app.draw()).toEqual(mixedPools[0].terms[1]);
+  });
+  it('空池和无可用池时禁用抽取，数量为零', () => {
     const app = useChallenges(ref(theme()), []);
+    expect(app.selectedPoolIds.value).toEqual([]);
+    expect(app.selectedPools.value).toEqual([]);
+    expect(app.total.value).toBe(0);
+    expect(app.remaining.value).toBe(0);
     expect(app.canDraw.value).toBe(false);
     expect(app.draw()).toBeNull();
     const empty = useChallenges(ref(theme()), [{ ...pools[0], terms: [] }]);
+    expect(empty.total.value).toBe(0);
+    expect(empty.remaining.value).toBe(0);
     expect(empty.canDraw.value).toBe(false);
     expect(empty.draw()).toBeNull();
   });
@@ -112,8 +230,54 @@ describe('词条池会话', () => {
     expect(app.draw()!.id).not.toBe(first.id);
     expect(new Set(app.selected.value.map((term) => term.id)).size).toBe(4);
   });
+  it('切换选池后仍能撤销移除和清空，恢复跨池列表的原顺序与去重资格', () => {
+    const app = useChallenges(ref(theme()), mixedPools, () => 0);
+    const first = app.draw()!;
+    app.togglePool('first');
+    app.togglePool('second');
+    const second = app.draw()!;
+    app.remove(first.id);
+    expect(app.selected.value).toEqual([second]);
+    app.togglePool('second');
+    expect(app.canUndo.value).toBe(true);
+    app.undo();
+    expect(app.selected.value).toEqual([first, second]);
+    expect(app.remaining.value).toBe(0);
+    app.togglePool('first');
+    expect(app.remaining.value).toBe(1);
+    app.clear();
+    expect(app.selected.value).toEqual([]);
+    expect(app.undoMessage.value).toBe('已清空 2 条词条');
+    app.togglePool('first');
+    app.togglePool('second');
+    expect(app.canUndo.value).toBe(true);
+    app.undo();
+    expect(app.selected.value).toEqual([first, second]);
+    expect(app.remaining.value).toBe(1);
+    expect(app.draw()).toEqual(mixedPools[1].terms[2]);
+    expect(app.remaining.value).toBe(0);
+  });
+  it('未选池导致抽取失败时保留撤销，选池变化不会延长六秒撤销窗口', () => {
+    const app = useChallenges(ref(theme()), mixedPools, () => 0);
+    const first = app.draw()!;
+    app.clear();
+    app.togglePool('first');
+    expect(app.draw()).toBeNull();
+    expect(app.canUndo.value).toBe(true);
+    app.undo();
+    expect(app.selected.value).toEqual([first]);
+    app.clear();
+    vi.advanceTimersByTime(5000);
+    app.togglePool('second');
+    app.togglePool('invalid');
+    vi.advanceTimersByTime(999);
+    expect(app.canUndo.value).toBe(true);
+    vi.advanceTimersByTime(1);
+    expect(app.canUndo.value).toBe(false);
+    app.undo();
+    expect(app.selected.value).toEqual([]);
+  });
   it('只撤销最近一次移除，满六秒后过期，销毁作用域时清理计时器', () => {
-    vi.useFakeTimers();
     const scope = effectScope();
     const app = scope.run(() => useChallenges(ref(theme()), pools, () => 0))!;
     const first = app.draw()!;
@@ -141,10 +305,9 @@ describe('词条池会话', () => {
     expect(vi.getTimerCount()).toBe(0);
     expect(app.canUndo.value).toBe(false);
   });
-  it('后续抽取、切池与切主题都会立即使旧撤销失效', () => {
-    const secondPool: ChallengePool = { ...pools[0], id: 'second' };
+  it('后续成功抽取或切主题会使旧撤销失效，返回原主题也不能恢复旧撤销', () => {
     const currentTheme = ref<Theme | null>(theme());
-    const app = useChallenges(currentTheme, [...pools, secondPool], () => 0);
+    const app = useChallenges(currentTheme, mixedPools, () => 0);
     const first = app.draw()!;
     app.clear();
     expect(app.canUndo.value).toBe(true);
@@ -152,13 +315,6 @@ describe('词条池会话', () => {
     expect(app.canUndo.value).toBe(false);
     app.undo();
     expect(app.selected.value).toEqual([first]);
-    app.clear();
-    app.selectPool(secondPool.id);
-    expect(app.canUndo.value).toBe(false);
-    app.selectPool(pools[0].id);
-    app.undo();
-    expect(app.selected.value).toEqual([]);
-    app.draw();
     app.clear();
     currentTheme.value = { ...theme(), id: 'another-theme' };
     currentTheme.value = theme();

@@ -51,8 +51,28 @@ export function readChallengePools(raw: unknown): ChallengePool[] {
   });
 }
 
-export function drawChallenge(pool: ChallengePool, selected: readonly ChallengeTerm[], rng: Rng = Math.random): ChallengeTerm | null {
-  const used = new Set(selected.map((term) => term.id));
-  const available = pool.terms.filter((term) => !used.has(term.id));
+/** 同一限制类型与正文视为同一词条，不因来源池不同增加抽取权重。 */
+export function challengeTermKey(term: ChallengeTerm): string {
+  return JSON.stringify([term.restriction, term.text]);
+}
+
+export function mergeChallengeTerms(pools: readonly ChallengePool[]): ChallengeTerm[] {
+  const unique = new Map<string, ChallengeTerm>();
+  for (const pool of pools) {
+    for (const term of pool.terms) {
+      const key = challengeTermKey(term);
+      if (!unique.has(key)) unique.set(key, term);
+    }
+  }
+  return [...unique.values()];
+}
+
+export function availableChallengeTerms(terms: readonly ChallengeTerm[], selected: readonly ChallengeTerm[]): ChallengeTerm[] {
+  const used = new Set(selected.map(challengeTermKey));
+  return terms.filter((term) => !used.has(challengeTermKey(term)));
+}
+
+export function drawChallenge(terms: readonly ChallengeTerm[], selected: readonly ChallengeTerm[], rng: Rng = Math.random): ChallengeTerm | null {
+  const available = availableChallengeTerms(terms, selected);
   return available.length ? pickOne(available, rng) : null;
 }

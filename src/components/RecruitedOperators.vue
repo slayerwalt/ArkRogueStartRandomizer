@@ -7,13 +7,10 @@ defineProps<{ operators: readonly Operator[] }>();
 
 <template>
   <section class="recruited-section" aria-labelledby="recruited-title">
-    <div class="recruited-heading">
-      <h2 id="recruited-title">已招募干员</h2>
-      <span>六星 {{ operators.length }} 名</span>
-    </div>
+    <h3 id="recruited-title" class="sr-only">已招募六星干员</h3>
     <TransitionGroup v-if="operators.length" name="roster" tag="ul" class="recruited-list" aria-label="已招募六星干员">
       <li v-for="operator in operators" :key="operator.id" class="operator-tile">
-        <OperatorPortrait :operator="operator" />
+        <OperatorPortrait :operator="operator" compact />
       </li>
     </TransitionGroup>
     <p v-else class="recruited-empty">

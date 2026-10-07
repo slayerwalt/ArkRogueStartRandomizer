@@ -1,11 +1,11 @@
 .start-entry .start-toggle-hint .icon { transform: none; }
 .start-heading-row { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 16px; }
 .start-heading-row .start-heading { flex: 1; min-width: 190px; }
-.button.start-reset { flex-shrink: 0; min-height: 40px; padding: 8px 12px; font-size: 12px; }
+.button.start-reset { flex-shrink: 0; min-height: 44px; padding: 8px 12px; font-size: 12px; }
 .full-start-actions {
   display: flex;
   justify-content: center;
-  margin-bottom: 20px;
+  margin-bottom: 12px;
 }
 .recruited-section {
   margin-top: 24px;
@@ -20,7 +20,7 @@
   justify-content: space-between;
   gap: 12px;
 }
-.recruited-heading h2 {
+.recruited-heading h3 {
   font-size: 17px;
 }
 .recruited-heading > span,
@@ -82,7 +82,7 @@
   transform: rotate(90deg);
 }
 .start-content {
-  margin-top: 18px;
+  margin-top: 12px;
 }
 .results-section.collapsed {
   padding-block: 12px;
@@ -90,8 +90,8 @@
 .quick-confirm {
   display: flex;
   justify-content: center;
-  margin-top: 16px;
-  padding-top: 16px;
+  margin-top: 12px;
+  padding-top: 12px;
   border-top: 1px solid var(--line);
 }
 .quick-confirm .button {
@@ -234,7 +234,7 @@
   width: 18px;
 }
 .context-card h3 {
-  font-size: 16px;
+  font-size: 14px;
 }
 .context-card p {
   color: var(--muted);

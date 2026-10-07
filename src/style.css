@@ -1,6 +1,8 @@
 * {
   box-sizing: border-box;
 }
+html { scroll-padding-top: var(--workspace-scroll-offset); scroll-padding-bottom: 104px; }
+:where(button, input, select, summary, [tabindex='-1']) { scroll-margin-block: 12px; }
 body {
   margin: 0;
   background: var(--background);
@@ -175,6 +177,7 @@ nav {
 }
 .theme-status {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 7px;
   color: #e2efea;
@@ -193,6 +196,7 @@ nav {
   letter-spacing: 1.6px;
   margin-left: 16px;
   color: #c7d4d5;
+  white-space: nowrap;
 }
 .theme-art {
   width: 46%;
@@ -264,12 +268,12 @@ nav {
 .context-grid {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
-  gap: 12px;
-  padding-top: 16px;
+  gap: 10px;
+  padding-top: 12px;
   border-top: 1px solid var(--line);
 }
 .context-grid > .context-card + .context-card {
-  padding-top: 12px;
+  padding-top: 10px;
   border-top: 1px solid var(--line);
 }
 .roster-heading {
@@ -277,8 +281,8 @@ nav {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  margin: 16px 0 12px;
-  padding-top: 16px;
+  margin: 12px 0 8px;
+  padding-top: 12px;
   border-top: 1px solid var(--line);
 }
 .roster-heading h2 {
@@ -289,7 +293,7 @@ nav {
   color: var(--muted);
 }
 .result-footnote {
-  margin-top: 18px;
+  margin-top: 12px;
 }
 .welcome-panel {
   min-height: 160px;
@@ -348,7 +352,7 @@ nav {
   color: var(--hope);
   padding: 12px 16px;
   border-radius: var(--radius-small);
-  margin-top: 12px;
+  margin-block: 0 16px;
 }
 @media (max-width: 760px) {
   .header-inner {

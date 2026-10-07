@@ -38,7 +38,7 @@ async function chooseTicket(id: string) {
   feedbackAtList.value = false;
   ticketPickerOpen.value = false;
   await nextTick();
-  candidatesHeading.value?.focus({ preventScroll: true });
+  candidatesHeading.value?.focus();
 }
 async function confirmSelected() {
   if (!confirmRecruit()) return;
@@ -82,7 +82,7 @@ defineExpose({ focusHeading });
 </script>
 
 <template>
-  <section class="feature-section" aria-labelledby="in-run-title">
+  <section id="in-run-panel" class="feature-section" aria-labelledby="in-run-title" tabindex="-1">
     <h2 id="in-run-title" ref="heading" class="feature-title in-run-focus-heading" tabindex="-1">局内随机干员</h2>
     <p v-if="!active" class="feature-description">确认开局后可使用。</p>
     <template v-else>
@@ -165,15 +165,20 @@ defineExpose({ focusHeading });
 </template>
 
 <style scoped>
-.in-run-focus-heading { scroll-margin-top: 24px; }
-.in-run-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 20px; }
-.current-ticket { font-size: 14px; font-weight: 600; }
+.in-run-focus-heading { scroll-margin-top: 16px; }
+.in-run-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 12px; }
+.current-ticket { font-size: 13px; font-weight: 600; }
 .in-run-toolbar .button { flex-shrink: 0; white-space: nowrap; }
-.in-run-ticket-picker.compact { margin-top: 12px; padding: 4px 12px 12px; border: 1px solid var(--line); border-radius: 10px; }
-.in-run-ticket-picker.compact .ticket-group { margin-top: 12px; }
+.in-run-ticket-picker.compact { margin-top: 8px; padding: 2px 10px 10px; border: 1px solid var(--line); border-radius: 8px; }
+.in-run-ticket-picker.compact .ticket-group { margin-top: 8px; }
 .current-ticket-option { border-color: var(--primary); background: var(--primary-soft); }
-.in-run-draw > .feature-actions { margin-top: 12px; }
-.run-feedback { display: flex; align-items: center; gap: 12px; min-height: 40px; margin-top: 12px; padding: 4px 12px; background: var(--primary-soft); border-radius: 8px; }
+.in-run-draw > .feature-actions { margin-top: 8px; }
+.run-feedback { display: flex; align-items: center; gap: 8px; min-height: 36px; margin-top: 8px; padding: 2px 10px; background: var(--primary-soft); border-radius: 8px; }
 .run-feedback .run-status { flex: 1; margin: 0; color: var(--ink); overflow-wrap: anywhere; }
-.run-feedback .text-button { flex-shrink: 0; min-height: 36px; }
+.run-feedback .text-button { flex-shrink: 0; min-height: 44px; }
+@media (min-width: 760px) {
+  .in-run-ticket-picker { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 16px; margin-top: 12px; }
+  .in-run-ticket-picker .ticket-group, .in-run-ticket-picker.compact .ticket-group { margin-top: 0; }
+  .in-run-ticket-picker .ticket-group:not(:first-child) .ticket-options { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
 </style>
