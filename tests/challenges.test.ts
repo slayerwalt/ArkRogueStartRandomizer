@@ -1,7 +1,7 @@
 import { effectScope, ref } from 'vue';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import rawPools from '../src/data/challenge-pools.json';
-import { drawChallenge, mergeChallengeTerms, readChallengePools, type ChallengePool, type ChallengeTerm } from '../src/lib/challenges';
+import { drawChallenge, groupChallengePoolsBySource, mergeChallengeTerms, readChallengePools, type ChallengePool, type ChallengeTerm } from '../src/lib/challenges';
 import { useChallenges } from '../src/composables/useChallenges';
 import type { Theme } from '../src/lib/types';
 
@@ -26,14 +26,36 @@ const mixedPools: ChallengePool[] = [
 ];
 
 describe('全随机挑战词条', () => {
-  it('加载现有161条和来源，保留禁用与仅限语义，不按原分组加权', () => {
-    const pool = pools[0];
-    expect(pool.terms).toHaveLength(161);
-    expect(pool.sourceUrl).toBe('https://www.bilibili.com/toy/MRFZ/index.html');
-    expect(pool.terms.find((term) => term.text === '医疗')?.restriction).toBe('forbid');
-    expect(pool.terms.find((term) => term.text === '光着脚')?.restriction).toBe('allow');
-    const selected = pool.terms.map((_, index) => drawChallenge(pool.terms, [], () => (index + 0.5) / pool.terms.length)!.id);
-    expect(new Set(selected).size).toBe(161);
+  it('按最新原站拆分朝阳三个难度池，保留禁用与仅限的区别', () => {
+    const standard = pools.find((pool) => pool.id === 'chaoyang-standard')!;
+    const hard = pools.find((pool) => pool.id === 'chaoyang-hard')!;
+    const insane = pools.find((pool) => pool.id === 'chaoyang-insane')!;
+    expect([standard.name, hard.name, insane.name]).toEqual(['朝阳随机挑战-普通', '朝阳随机挑战-困难', '朝阳随机挑战-变态']);
+    expect([standard.terms.length, hard.terms.length, insane.terms.length]).toEqual([93, 55, 17]);
+    expect(pools.find((pool) => pool.id === 'blackforest-personal-2026-10-02')?.terms).toHaveLength(5);
+    expect(mergeChallengeTerms(pools)).toHaveLength(170);
+    for (const pool of [standard, hard, insane]) {
+      expect(pool.sourceName).toBe('朝阳随机挑战');
+      expect(pool.sourceUrl).toBe('https://www.bilibili.com/toy/MRFZ/index.html');
+    }
+    expect(standard.terms.every((term) => term.restriction === 'forbid')).toBe(true);
+    expect(hard.terms.every((term) => term.restriction === 'allow')).toBe(true);
+    expect(insane.terms.every((term) => term.restriction === 'allow')).toBe(true);
+    expect(standard.terms.find((term) => term.text === '医疗')?.restriction).toBe('forbid');
+    expect(insane.terms.find((term) => term.text === '光着脚')?.restriction).toBe('allow');
+    for (const text of ['吃过', '开服']) {
+      expect(standard.terms.find((term) => term.text === text)?.restriction).toBe('forbid');
+      expect(hard.terms.find((term) => term.text === text)?.restriction).toBe('allow');
+      expect(insane.terms.some((term) => term.text === text)).toBe(false);
+    }
+    expect(standard.terms.some((term) => term.text === '蓝色居多')).toBe(false);
+    expect(hard.terms.find((term) => term.text === '蓝色居多')?.restriction).toBe('allow');
+  });
+  it('每个难度池中的独立词条占相同的随机区间', () => {
+    for (const pool of pools) {
+      const selected = pool.terms.map((_, index) => drawChallenge(pool.terms, [], () => (index + 0.5) / pool.terms.length)!.id);
+      expect(new Set(selected).size).toBe(pool.terms.length);
+    }
   });
   it.each(pools)('$name 本轮去重，耗尽返回空；抽取不会修改池和历史', (pool) => {
     const before = JSON.stringify(pool);
@@ -60,9 +82,56 @@ describe('全随机挑战词条', () => {
     expect(() => readChallengePools({ ...raw, pools: [{ ...raw.pools[0], source: { url: 'javascript:alert(1)' } }] })).toThrow();
     expect(() => readChallengePools({ ...raw, pools: [{ ...raw.pools[0], groups: [{ id: 'g', restriction: 'unknown', terms: ['医疗'] }] }] })).toThrow();
   });
+  it('读取独立来源名称，并兼容未提供来源名称的旧词条池', () => {
+    const raw = { schemaVersion: 1, pools: [{ id: 'normal', name: '普通', source: { url: 'https://example.com' },
+      groups: [{ id: 'g', restriction: 'forbid', terms: ['医疗'] }] }] };
+    expect(readChallengePools(raw)[0].sourceName).toBe('普通');
+    const named = { ...raw, pools: [{ ...raw.pools[0], source: { ...raw.pools[0].source, name: '挑战来源' } }] };
+    expect(readChallengePools(named)[0]).toMatchObject({ name: '普通', sourceName: '挑战来源' });
+  });
+});
+
+describe('按来源展示词条池', () => {
+  it('同源难度只产生一个来源入口，交错输入仍保留来源与池的顺序', () => {
+    const normal = { ...mixedPools[0], name: '普通', sourceName: '同一来源' };
+    const hard = { ...mixedPools[0], id: 'hard', name: '困难', sourceName: '同一来源' };
+    const input = [normal, mixedPools[1], hard];
+    const before = JSON.stringify(input);
+    expect(groupChallengePoolsBySource(input)).toEqual([
+      { name: '同一来源', sourceUrl: normal.sourceUrl, pools: [normal, hard] },
+      { name: mixedPools[1].name, sourceUrl: mixedPools[1].sourceUrl, pools: [mixedPools[1]] },
+    ]);
+    expect(JSON.stringify(input)).toBe(before);
+    expect(groupChallengePoolsBySource([])).toEqual([]);
+  });
+  it('真实难度池仍只展示朝阳和仙术杯两个来源', () => {
+    const sources = groupChallengePoolsBySource(pools);
+    expect(sources.map(({ name, sourceUrl, pools: sourcePools }) => ({ name, sourceUrl, poolIds: sourcePools.map((pool) => pool.id) }))).toEqual([
+      {
+        name: '朝阳随机挑战', sourceUrl: 'https://www.bilibili.com/toy/MRFZ/index.html',
+        poolIds: ['chaoyang-standard', 'chaoyang-hard', 'chaoyang-insane'],
+      },
+      {
+        name: '仙术杯#9', sourceUrl: 'https://live.bilibili.com/blackboard/era/5sWSFsRb4xZZ2hHC.html',
+        poolIds: ['blackforest-personal-2026-10-02'],
+      },
+    ]);
+  });
 });
 
 describe('合并多个词条池', () => {
+  it('跨难度保留同文不同限制，已抽禁用词条不会排除其仅限版本', () => {
+    const chaoyang = pools.filter((pool) => pool.sourceName === '朝阳随机挑战');
+    const terms = mergeChallengeTerms([...chaoyang, ...chaoyang]);
+    const singleMerge = mergeChallengeTerms(chaoyang);
+    expect(terms).toEqual(singleMerge);
+    for (const text of ['吃过', '开服']) {
+      const matching = terms.filter((term) => term.text === text);
+      expect(matching.map((term) => term.restriction)).toEqual(['forbid', 'allow']);
+      expect(drawChallenge(matching, [matching[0]], () => 0)).toEqual(matching[1]);
+      expect(drawChallenge(matching, matching, () => 0)).toBeNull();
+    }
+  });
   it('按限制类型和文本合并重复项，同文不同限制仍分别保留，且不修改原池', () => {
     const before = JSON.stringify(mixedPools);
     const terms = mergeChallengeTerms(mixedPools);
@@ -123,7 +192,7 @@ describe('词条池会话', () => {
     expect(app.draw()).toEqual(first);
     app.clear();
     expect(app.selected.value).toEqual([]);
-    expect(app.remaining.value).toBe(161);
+    expect(app.remaining.value).toBe(pools[0].terms.length);
   });
   it('切换选池保留全部已抽列表并继续去重，耗尽按当前合并池计算', () => {
     const app = useChallenges(ref(theme()), mixedPools, () => 0);

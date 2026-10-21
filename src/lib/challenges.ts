@@ -10,11 +10,18 @@ export interface ChallengeTerm {
 export interface ChallengePool {
   id: string;
   name: string;
+  sourceName?: string;
   sourceUrl: string;
   terms: ChallengeTerm[];
 }
 
-/** 原始分组仅用于定位词条；全部词条展平，不按分组设置难度或权重。 */
+export interface ChallengePoolSource {
+  name: string;
+  sourceUrl: string;
+  pools: ChallengePool[];
+}
+
+/** 每个池可对应一种难度；池内原始分组展平，不设置抽取权重。 */
 export function readChallengePools(raw: unknown): ChallengePool[] {
   const record = (value: unknown): Record<string, unknown> => {
     if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error('词条池格式错误');
@@ -32,8 +39,11 @@ export function readChallengePools(raw: unknown): ChallengePool[] {
     const id = nonempty(pool.id);
     if (ids.has(id)) throw new Error('词条池标识重复');
     ids.add(id);
-    const sourceUrl = nonempty(record(pool.source).url);
+    const source = record(pool.source);
+    const sourceUrl = nonempty(source.url);
     if (!/^https?:\/\//.test(sourceUrl)) throw new Error('词条池来源地址无效');
+    const name = nonempty(pool.name);
+    const sourceName = source.name === undefined ? name : nonempty(source.name);
     if (!Array.isArray(pool.groups)) throw new Error('词条分组错误');
     const groupIds = new Set<string>();
     const terms = pool.groups.flatMap((value): ChallengeTerm[] => {
@@ -47,8 +57,22 @@ export function readChallengePools(raw: unknown): ChallengePool[] {
       return group.terms.map((text, index) => ({ id: `${id}:${groupId}:${index}`, text: nonempty(text), restriction }));
     });
     const unique = [...new Map(terms.map((term) => [`${term.restriction}:${term.text}`, term])).values()];
-    return { id, name: nonempty(pool.name), sourceUrl, terms: unique };
+    return { id, name, sourceName, sourceUrl, terms: unique };
   });
+}
+
+/** 同一来源的不同难度共用来源名称与脚注，保留首次出现的顺序。 */
+export function groupChallengePoolsBySource(pools: readonly ChallengePool[]): ChallengePoolSource[] {
+  const sources = new Map<string, ChallengePoolSource>();
+  for (const pool of pools) {
+    let source = sources.get(pool.sourceUrl);
+    if (!source) {
+      source = { name: pool.sourceName ?? pool.name, sourceUrl: pool.sourceUrl, pools: [] };
+      sources.set(pool.sourceUrl, source);
+    }
+    source.pools.push(pool);
+  }
+  return [...sources.values()];
 }
 
 /** 同一限制类型与正文视为同一词条，不因来源池不同增加抽取权重。 */

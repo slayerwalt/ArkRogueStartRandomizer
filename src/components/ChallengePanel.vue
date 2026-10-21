@@ -1,15 +1,15 @@
 <script setup lang="ts">
 import { computed, nextTick, ref, watch } from 'vue';
-import { CHALLENGE_RESTRICTION_LABELS, type ChallengePool } from '../lib/challenges';
+import { CHALLENGE_RESTRICTION_LABELS, groupChallengePoolsBySource, type ChallengePool } from '../lib/challenges';
 import type { ChallengeController } from '../composables/useChallenges';
 import AppIcon from './AppIcon.vue';
 
 const props = defineProps<{ pools: readonly ChallengePool[]; controller: ChallengeController; error?: string }>();
 const { selectedPoolIds, selectedPools, selected, total, remaining, canDraw, lastDrawn, canUndo, undoMessage, togglePool, draw, remove, clear, undo } = props.controller;
 const recentFirst = computed(() => [...selected.value].reverse());
-const poolOptions = computed(() => props.pools.map((pool) => ({
-  ...pool, active: selectedPoolIds.value.includes(pool.id),
-})));
+const poolOptions = computed(() => groupChallengePoolsBySource(props.pools).flatMap((source, index) =>
+  source.pools.map((pool) => ({ ...pool, sourceNumber: index + 1, active: selectedPoolIds.value.includes(pool.id) })),
+));
 const poolSummary = computed(() => !selectedPools.value.length
   ? '请选择至少一个词条池。'
   : remaining.value
@@ -61,8 +61,9 @@ watch(canUndo, async (available) => {
           <legend>词条池<span>可多选</span></legend>
           <div class="challenge-pool-options">
             <button v-for="item in poolOptions" :key="item.id" type="button" class="challenge-pool-option"
-              :class="{ selected: item.active }" :aria-pressed="item.active" :aria-label="item.name" @click="togglePool(item.id)">
-              <span class="challenge-pool-name">{{ item.name }}</span>
+              :class="{ selected: item.active }" :aria-pressed="item.active" :aria-label="item.name"
+              :aria-describedby="`challenge-source-${item.sourceNumber}`" @click="togglePool(item.id)">
+              <span class="challenge-pool-name">{{ item.name }}<sup class="challenge-source-marker" aria-hidden="true">{{ item.sourceNumber }}</sup></span>
               <span class="challenge-pool-size">{{ item.terms.length }} 条</span>
             </button>
           </div>
@@ -109,7 +110,8 @@ watch(canUndo, async (available) => {
 .challenge-pool-option { display: inline-flex; flex: 0 1 auto; align-items: center; gap: 6px; min-width: 0; max-width: 100%; min-height: 44px; padding: 6px 8px; border: 1px solid var(--line); border-radius: var(--radius-small); background: var(--surface); text-align: left; transition: background 150ms, border-color 150ms; }
 .challenge-pool-option:hover { border-color: var(--primary); background: var(--background); }
 .challenge-pool-option.selected { color: var(--primary); border-color: var(--primary); background: var(--primary-soft); }
-.challenge-pool-name { min-width: 0; overflow-wrap: anywhere; font-size: 12px; }
+.challenge-pool-name { min-width: 0; white-space: nowrap; font-size: 12px; }
+.challenge-source-marker { position: relative; top: -.35em; margin-left: 2px; font-size: 10px; line-height: 0; vertical-align: baseline; }
 .selected .challenge-pool-name { font-weight: 600; }
 .challenge-pool-size { flex-shrink: 0; color: var(--muted); font-size: 11px; font-variant-numeric: tabular-nums; }
 .challenge-draw-actions { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 12px; }

@@ -25,6 +25,8 @@ import band15 from '../assets/squads/rogue_6_band_15.webp';
 import band17 from '../assets/squads/rogue_6_band_17.webp';
 import band19 from '../assets/squads/rogue_6_band_19.webp';
 import band21 from '../assets/squads/rogue_6_band_21.webp';
+import band23 from '../assets/squads/rogue_6_band_23.webp';
+import band24 from '../assets/squads/rogue_6_band_24.webp';
 
 export interface RogueThemeEntry {
   /** 与 rogue-data.json 中主题 id 对应（rogue_6 即黑流树海） */
@@ -47,7 +49,7 @@ export const ROGUE_THEMES: RogueThemeEntry[] = [
   { id: 'rogue_6', name: '沉沦者的黑流树海', banner: rogue6, showcase: rogue6Wide, available: true },
 ];
 
-/** 分队图标（来自路标档案馆的黑流树海档案），按分队 id 索引；无图标的分队返回 undefined */
+/** 分队图标来自路标档案馆，新增分队 23、24 来自 ArknightsAssets2 国服资源；按分队 id 索引，无图标时返回 undefined。 */
 const SQUAD_ICONS: Record<string, string> = {
   rogue_6_band_1: band1,
   rogue_6_band_3: band3,
@@ -64,6 +66,8 @@ const SQUAD_ICONS: Record<string, string> = {
   rogue_6_band_17: band17,
   rogue_6_band_19: band19,
   rogue_6_band_21: band21,
+  rogue_6_band_23: band23,
+  rogue_6_band_24: band24,
 };
 
 export function squadIcon(id: string): string | undefined {

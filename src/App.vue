@@ -20,7 +20,7 @@ import { useStartConfirmation } from './composables/useStartConfirmation';
 import { useStartMode, type StartMode } from './composables/useStartMode';
 import { useInRunRecruitment } from './composables/useInRunRecruitment';
 import { useChallenges } from './composables/useChallenges';
-import { readChallengePools, type ChallengePool } from './lib/challenges';
+import { groupChallengePoolsBySource, readChallengePools, type ChallengePool } from './lib/challenges';
 import { validateGameData } from './lib/data';
 import { ROGUE_THEMES, squadIcon } from './lib/themes';
 import type { GameData } from './lib/types';
@@ -40,6 +40,7 @@ try {
 } catch {
   challengeError = '词条池暂时无法读取，请刷新页面重试。';
 }
+const challengeSources = groupChallengePoolsBySource(challengePools);
 const selectedThemeId = ref('rogue_6');
 const selectedTheme = computed(
   () => ROGUE_THEMES.find((t) => t.id === selectedThemeId.value)!,
@@ -270,6 +271,12 @@ function selectTheme(id: string) {
         <AppIcon name="arrow" />
       </button>
     </section>
+    <div v-if="challengeSources.length" class="footer-sources">
+      <p v-for="(source, index) in challengeSources" :id="`challenge-source-${index + 1}`" :key="source.sourceUrl" class="footer-source">
+        <span>[{{ index + 1 }}]</span>
+        <a :href="source.sourceUrl" target="_blank" rel="noopener noreferrer">{{ source.name }}原地址<span class="sr-only">（在新标签页打开）</span></a>
+      </p>
+    </div>
     <footer class="site-footer">
       <span class="footer-brand">
         <img :src="rolllikeLogo" alt="RollLike" width="120" height="40" loading="lazy" />

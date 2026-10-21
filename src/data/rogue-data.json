@@ -1,14 +1,14 @@
 {
-  "generatedAt": "2026-09-10",
+  "generatedAt": "2026-10-20",
   "source": {
     "repository": "https://github.com/yuanyan3060/ArknightsGameResource",
-    "commit": "bb48105cf738b41648c0a9dbb58bfbc6541e0a81",
+    "commit": "70ee919165089e0ac83e8d56fdee7263e2dd5f24",
     "dirty": false,
-    "dataVersion": "77.0.0",
+    "dataVersion": "78.2.0",
     "inputSha256": {
-      "gamedata/excel/character_table.json": "ae68a40287a19da9dc0cdfa828e61cc9ea613cfb00c262468d99faaedc4ebe6d",
-      "gamedata/excel/roguelike_topic_table.json": "865814b675758fb23bcd1c3331e8aa320345f34ccb06ca0bcfa219b60a0bc27e",
-      "gamedata/excel/data_version.txt": "f13795db7608bff8a6d26fd0f4e1479a9dd5b9e570281abe32050cbe2640a92f"
+      "gamedata/excel/character_table.json": "287b8c62e58c0b9fc033e200b2b57f12823fc7757bdc6239cc5eccd5d4d36efd",
+      "gamedata/excel/roguelike_topic_table.json": "ddb7cf51bc3f7abf2f64f584047bcd19e8acc7c717b0ad1502fbe0d39b5fca9d",
+      "gamedata/excel/data_version.txt": "9671e1614158896e08792ae55a4996c897793d12b58c129c4b9882a0d092cb17"
     }
   },
   "themes": [
@@ -195,6 +195,22 @@
           "name": "地质调查分队",
           "desc": "可通过探访不同类型的节点，提升战斗后获得收藏品的概率",
           "unlockCond": null,
+          "initialHopeBonus": 0,
+          "recruitDiscount": null
+        },
+        {
+          "id": "rogue_6_band_23",
+          "name": "团结阵线分队",
+          "desc": "应急助力节点刷新时不再消耗源石锭，初始携带收藏品【似曾相识棋盒】",
+          "unlockCond": "通关结局1次",
+          "initialHopeBonus": 0,
+          "recruitDiscount": null
+        },
+        {
+          "id": "rogue_6_band_24",
+          "name": "踏足遍历分队",
+          "desc": "使用加工品移动后随机揭露3处节点的视野，初始携带收藏品《去踏足》",
+          "unlockCond": "通关结局1次",
           "initialHopeBonus": 0,
           "recruitDiscount": null
         }
@@ -2314,6 +2330,15 @@
       "charDiscount": 0
     },
     {
+      "id": "char_393_toledo",
+      "name": "德·托莱多",
+      "profession": "SUPPORT",
+      "subProfession": "underminer",
+      "rarity": 5,
+      "hopeCost": 2,
+      "charDiscount": 0
+    },
+    {
       "id": "char_394_hadiya",
       "name": "哈蒂娅",
       "profession": "WARRIOR",
@@ -3617,6 +3642,24 @@
       "rarity": 6,
       "hopeCost": 6,
       "charDiscount": -4
+    },
+    {
+      "id": "char_4231_clemnt",
+      "name": "克莱门莎",
+      "profession": "WARRIOR",
+      "subProfession": "primguard",
+      "rarity": 6,
+      "hopeCost": 6,
+      "charDiscount": 0
+    },
+    {
+      "id": "char_4232_hbound",
+      "name": "旅骨",
+      "profession": "SPECIAL",
+      "subProfession": "alchemist",
+      "rarity": 5,
+      "hopeCost": 2,
+      "charDiscount": 0
     },
     {
       "id": "char_4234_pedro",

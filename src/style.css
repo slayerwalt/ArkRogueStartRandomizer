@@ -347,6 +347,25 @@ nav {
   object-fit: contain;
   flex: 0 0 auto;
 }
+.footer-sources { width: 100%; margin-top: 16px; color: var(--muted); }
+.footer-sources + .site-footer { margin-top: 8px; }
+.footer-source {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  margin: 0;
+  font-size: 12px;
+}
+.footer-source a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  color: var(--muted);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.footer-source a:hover { color: var(--primary); }
 .notice {
   background: var(--hope-soft);
   color: var(--hope);
