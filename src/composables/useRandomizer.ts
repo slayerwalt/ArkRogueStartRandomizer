@@ -24,6 +24,7 @@ export function useRandomizer(
   operators: readonly Operator[],
   settings: Readonly<Ref<RollSettings>>,
   rng: Rng = Math.random,
+  excluded: Readonly<Ref<readonly Operator[]>> = shallowRef([]),
 ) {
   const session = shallowRef<RandomSession | null>(null);
   const current = computed(() => session.value?.themeId === theme.value?.id ? session.value : null);
@@ -65,18 +66,18 @@ export function useRandomizer(
       group: nextGroup,
       squadRandomized: keepSquad ? squadRandomized.value : true,
       groupRandomized: keepGroup ? groupRandomized.value : true,
-      result: rollSlotsFor(operators, settings.value, nextSquad, nextGroup, rng),
+      result: rollSlotsFor(operators, settings.value, nextSquad, nextGroup, rng, excluded.value),
     });
   }
   function changeSquad(next: Squad, randomized: boolean) {
     const nextResult = result.value && group.value
-      ? rollSlotsFor(operators, settings.value, next, group.value, rng)
+      ? rollSlotsFor(operators, settings.value, next, group.value, rng, excluded.value)
       : null;
     update({ squad: next, squadRandomized: randomized, result: nextResult });
   }
   function changeGroup(next: RecruitGroup, randomized: boolean) {
     const nextResult = result.value && squad.value
-      ? rollSlotsFor(operators, settings.value, squad.value, next, rng)
+      ? rollSlotsFor(operators, settings.value, squad.value, next, rng, excluded.value)
       : null;
     update({ group: next, groupRandomized: randomized, result: nextResult });
   }
@@ -121,6 +122,8 @@ export function useRandomizer(
       current.squad,
       budget,
       rng,
+      [...excluded.value, ...current.slots.flatMap((slot, i) =>
+        i !== index && slot.operator?.rarity === 6 ? [slot.operator] : [])],
     );
     update({ result: { ...current, slots } });
   }

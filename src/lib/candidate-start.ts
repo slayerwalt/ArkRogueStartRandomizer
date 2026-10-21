@@ -1,4 +1,5 @@
 import { pickOne, type Rng } from './roll';
+import { availableOperatorPool } from './pool';
 import type { Operator, RollSettings } from './types';
 
 export const START_PROFESSION_SLOTS = 3;
@@ -10,9 +11,8 @@ export interface CandidateDraw {
   shortages: { profession: string; requested: number; actual: number }[];
 }
 
-export function sixStarPool(operators: readonly Operator[], settings: RollSettings): Operator[] {
-  const allowed = new Set(settings.pool[6] ?? []);
-  return operators.filter((operator) => operator.rarity === 6 && allowed.has(operator.id));
+export function sixStarPool(operators: readonly Operator[], settings: RollSettings, excluded: readonly Operator[] = []): Operator[] {
+  return availableOperatorPool(operators, settings, excluded).filter((operator) => operator.rarity === 6);
 }
 
 /** 重复职业位累加配额；每轮候选不重复，人数不足时保留实际结果。 */
@@ -21,8 +21,9 @@ export function drawStartCandidates(
   settings: RollSettings,
   professions: readonly string[],
   rng: Rng = Math.random,
+  excluded: readonly Operator[] = [],
 ): CandidateDraw {
-  const pool = sixStarPool(operators, settings);
+  const pool = sixStarPool(operators, settings, excluded);
   const quotas = new Map<string, number>();
   for (const profession of professions) {
     quotas.set(profession, (quotas.get(profession) ?? 0) + CANDIDATES_PER_SLOT);

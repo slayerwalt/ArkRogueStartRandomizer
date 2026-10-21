@@ -1,14 +1,15 @@
 import { computed, getCurrentScope, onScopeDispose, shallowRef, watch, type Ref } from 'vue';
 import { drawInRunCandidates, IN_RUN_TICKETS, operatorIdentity, type InRunDraw } from '../lib/in-run';
 import type { Rng } from '../lib/roll';
-import type { Operator, RollSettings } from '../lib/types';
+import type { Operator, RollSettings, Theme } from '../lib/types';
 import type { ConfirmedStart } from './useStartConfirmation';
 
 export type RecruitSource = 'start' | 'random' | 'manual' | 'temporary';
 export type RegistrationKind = 'manual' | 'temporary' | 'emergency';
 export interface RunMember { operator: Operator; source: RecruitSource }
 interface RunSession {
-  start: ConfirmedStart;
+  themeId: string;
+  start: ConfirmedStart | null;
   members: RunMember[];
   emergency: Operator[];
   draw: InRunDraw | null;
@@ -17,9 +18,9 @@ interface RunSession {
 }
 
 export function useInRunRecruitment(
+  theme: Readonly<Ref<Theme | null>>,
   operators: readonly Operator[],
   settings: Readonly<Ref<RollSettings>>,
-  confirmedStart: Readonly<Ref<ConfirmedStart | null>>,
   rng: Rng = Math.random,
 ) {
   const session = shallowRef<RunSession | null>(null);
@@ -31,20 +32,14 @@ export function useInRunRecruitment(
     removal.value = null;
   }
   if (getCurrentScope()) onScopeDispose(clearRemoval);
-  watch(confirmedStart, (start) => {
-    clearRemoval();
-    if (!start || session.value?.start === start) return;
-    const unique = [...new Map(start.operators.map((operator) => [operatorIdentity(operator), operator])).values()];
-    session.value = { start, members: unique.map((operator) => ({ operator, source: 'start' })),
-      emergency: [], draw: null, selectedId: null, message: '' };
-  }, { immediate: true, flush: 'sync' });
-  const current = computed(() => confirmedStart.value && session.value?.start === confirmedStart.value ? session.value : null);
-  const active = computed(() => Boolean(current.value));
+  watch(theme, clearRemoval, { flush: 'sync' });
+  const current = computed(() => session.value?.themeId === theme.value?.id ? session.value : null);
+  const active = computed(() => Boolean(theme.value));
   const members = computed(() => current.value?.members ?? []);
   const emergency = computed(() => current.value?.emergency ?? []);
   const recruited = computed(() => members.value.map((member) => member.operator));
-  const sixStars = computed(() => recruited.value.filter((operator) => operator.rarity === 6));
   const excluded = computed(() => [...recruited.value, ...emergency.value]);
+  const sixStars = computed(() => excluded.value.filter((operator) => operator.rarity === 6));
   const excludedKeys = computed(() => new Set(excluded.value.map(operatorIdentity)));
   const draw = computed(() => current.value?.draw ?? null);
   const candidates = computed(() => draw.value?.candidates.filter((operator) => !excludedKeys.value.has(operatorIdentity(operator))) ?? []);
@@ -54,9 +49,37 @@ export function useInRunRecruitment(
   watch(settings, clearRemoval, { deep: true, flush: 'sync' });
 
   function update(patch: Partial<RunSession>) {
-    if (!current.value) return;
+    if (!theme.value) return;
     clearRemoval();
-    session.value = { ...current.value, ...patch };
+    session.value = { ...(current.value ?? { themeId: theme.value.id, start: null, members: [],
+      emergency: [], draw: null, selectedId: null, message: '' }), ...patch };
+  }
+  function applyStart(start: ConfirmedStart) {
+    if (!theme.value || current.value?.start === start) return;
+    const combined = new Map(members.value.map((member) => [operatorIdentity(member.operator), member]));
+    for (const operator of start.operators) {
+      const key = operatorIdentity(operator);
+      if (!combined.has(key)) combined.set(key, { operator, source: 'start' });
+    }
+    update({ start, members: [...combined.values()],
+      emergency: emergency.value.filter((operator) => !combined.has(operatorIdentity(operator))),
+      draw: null, selectedId: null, message: '' });
+  }
+  function addSelected(id: string) {
+    const operator = operators.find((item) => item.id === id && item.rarity === 6);
+    if (!theme.value || !operator || excludedKeys.value.has(operatorIdentity(operator))) return false;
+    update({ members: [...members.value, { operator, source: 'manual' }],
+      selectedId: current.value?.selectedId === id ? null : current.value?.selectedId ?? null,
+      message: `已添加：${operator.name}。` });
+    return true;
+  }
+  function selectedOptions() {
+    return operators.filter((operator) => operator.rarity === 6 && !excludedKeys.value.has(operatorIdentity(operator)));
+  }
+  function removeSelected(id: string) {
+    if (!sixStars.value.some((operator) => operator.id === id)) return;
+    if (emergency.value.some((operator) => operator.id === id)) removeEmergency(id);
+    else removeMember(id);
   }
   function drawTicket(id: string) {
     const ticket = IN_RUN_TICKETS.find((item) => item.id === id);
@@ -86,7 +109,7 @@ export function useInRunRecruitment(
     const key = operatorIdentity(operator);
     if (excludedKeys.value.has(key)) return false;
     update({ emergency: [...emergency.value, operator],
-      selectedId: chosen.value && operatorIdentity(chosen.value) === key ? null : current.value!.selectedId,
+      selectedId: chosen.value && operatorIdentity(chosen.value) === key ? null : current.value?.selectedId ?? null,
       message: `应急助力已登记：${operator.name}。` });
     return true;
   }
@@ -123,6 +146,7 @@ export function useInRunRecruitment(
     return operators.filter((operator) => !unavailable.has(operatorIdentity(operator)));
   }
   return { active, members, emergency, recruited, sixStars, draw, candidates, chosen, message, canUndoRemoval,
+    applyStart, addSelected, selectedOptions, removeSelected,
     drawTicket, selectCandidate, confirmRecruit, register, removeMember, removeEmergency, undoRemoval, discardDraw, registrationOptions };
 }
 

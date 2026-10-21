@@ -15,7 +15,6 @@ export function useRollSettings(
   const settings = ref<RollSettings>(createDefaultSettings(operators));
   const storageNotice = ref('');
   const pruneNotice = ref('');
-  const migrationNotice = ref('');
   let storage: StorageLike | undefined;
   const failed = () => {
     storageNotice.value = '设置暂无法保存到浏览器，本次使用不受影响。';
@@ -35,11 +34,10 @@ export function useRollSettings(
     if (loaded.pruned) {
       pruneNotice.value = `已移除 ${loaded.pruned} 条失效的干员设置。`;
     }
-    if (loaded.migrated) migrationNotice.value = '原“常见”范围已更新为全选，可在“调整范围”中修改。';
     if (loaded.pruned || loaded.migrated) persist();
   } catch {
     failed();
   }
   watch(settings, persist, { deep: true, flush: 'sync' });
-  return { settings, storageNotice, pruneNotice, migrationNotice };
+  return { settings, storageNotice, pruneNotice };
 }

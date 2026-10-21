@@ -142,6 +142,7 @@ nav {
   border: 0;
   border-radius: var(--radius-small);
   color: var(--muted);
+  white-space: nowrap;
 }
 .nav-button:hover {
   background: var(--background);
@@ -175,26 +176,9 @@ nav {
   letter-spacing: 0.7px;
   margin-top: 13px;
 }
-.theme-status {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 7px;
-  color: #e2efea;
-  font-size: 11px;
-}
-.status-dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: #8edcb2;
-}
-.status-dot.unavailable {
-  background: #c4cbd1;
-}
 .theme-index {
+  font-size: 11px;
   letter-spacing: 1.6px;
-  margin-left: 16px;
   color: #c7d4d5;
   white-space: nowrap;
 }
@@ -412,8 +396,7 @@ nav {
     height: 40px;
   }
   .brand-caption {
-    font-size: 11px;
-    letter-spacing: 1px;
+    display: none;
   }
   nav {
     gap: 0;

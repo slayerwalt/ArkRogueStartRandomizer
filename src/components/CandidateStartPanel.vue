@@ -9,7 +9,7 @@ import SquadCard from './SquadCard.vue';
 
 const props = defineProps<{ controller: CandidateStartController; registered: boolean }>();
 defineEmits<{ settings: []; chooseSquad: []; confirm: [] }>();
-const { professions, professionSlot, squad, squadRandomized, draw, chosen, confirmed, blockReason, canDraw,
+const { professions, professionSlot, squad, squadRandomized, draw, candidates, shortages, chosen, confirmed, blockReason, canDraw,
   fillProfession, selectProfessionSlot, removeProfession, clearProfessions, rollCandidates, selectCandidate,
   backToCandidates, editProfessions, rollSquad } = props.controller;
 const stageHeading = ref<HTMLElement>();
@@ -30,7 +30,7 @@ const professionOptions = computed(() => Object.entries(CLASS_CN)
   .map(([id, label]) => ({ id, label, count: professionCounts.value.get(id) ?? 0 })));
 const professionSummary = computed(() => [...professionCounts.value]
   .map(([id, count]) => `${CLASS_CN[id]} × ${count}`).join(' · '));
-const shortageText = computed(() => draw.value?.shortages
+const shortageText = computed(() => shortages.value
   .map((item) => `${CLASS_CN[item.profession]}需 ${item.requested} 名，可抽 ${item.actual} 名`).join('；'));
 async function move(action: () => void) {
   action();
@@ -74,13 +74,13 @@ async function cancelProfessionEdit() {
         @choose="$emit('chooseSquad')" @reroll="randomSquad" />
     </div>
     <ol class="candidate-steps" aria-label="开局步骤">
-      <li v-for="(label, i) in ['填写招募券', '选择干员', '确认起手']" :key="label"
+      <li v-for="(label, i) in ['填写招募券', '选择干员', '确认开局']" :key="label"
         :class="{ active: step === i + 1 }" :aria-current="step === i + 1 ? 'step' : undefined">
         <span class="candidate-step-number">{{ i + 1 }}</span><span>{{ label }}</span>
       </li>
     </ol>
     <h3 ref="stageHeading" tabindex="-1" class="candidate-heading">
-      {{ confirmed ? '已确定起手干员' : draw ? '六星候选干员' : '开局招募券' }}
+      {{ confirmed ? '已确定开局干员' : draw ? '可选结果' : '开局招募券' }}
     </h3>
 
     <template v-if="!draw">
@@ -120,10 +120,10 @@ async function cancelProfessionEdit() {
     </div>
 
     <template v-if="draw && !confirmed">
-      <p class="candidate-hint candidate-summary"><span>{{ professionSummary }}</span><span>本轮 {{ draw.candidates.length }} 名候选</span></p>
-      <p v-if="draw.shortages.length" class="inline-warning" role="status">候选不足：{{ shortageText }}。</p>
-      <div :key="drawVersion" class="candidate-grid" role="group" aria-label="六星候选干员">
-        <button v-for="(operator, index) in draw.candidates" :key="operator.id" class="operator-tile draw-reveal"
+      <p class="candidate-hint candidate-summary"><span>{{ professionSummary }}</span><span>本轮 {{ candidates.length }} 名干员</span></p>
+      <p v-if="shortages.length" class="inline-warning" role="status">可选干员不足：{{ shortageText }}。</p>
+      <div :key="drawVersion" class="candidate-grid" role="group" aria-label="开局可选结果">
+        <button v-for="(operator, index) in candidates" :key="operator.id" class="operator-tile draw-reveal"
           :style="{ '--reveal-delay': `${index * 24}ms` }"
           :class="{ selected: chosen?.id === operator.id }" :aria-pressed="chosen?.id === operator.id"
           :aria-label="`选择${operator.name}，${CLASS_CN[operator.profession]}，六星`" @click="selectCandidate(operator.id)">
@@ -132,23 +132,23 @@ async function cancelProfessionEdit() {
       </div>
       <div class="candidate-confirm selection-bar" :class="{ 'has-selection': chosen }">
         <span role="status"><template v-if="chosen"><small>已选</small><strong>{{ chosen.name }}</strong></template><template v-else>尚未选择干员</template></span>
-        <button class="button primary" :disabled="!chosen" @click="$emit('confirm')">确认起手</button>
+        <button class="button primary" :disabled="!chosen" @click="$emit('confirm')">确认开局</button>
       </div>
     </template>
 
     <div v-if="confirmed && chosen" class="confirmed-start">
-      <article class="operator-tile" :aria-label="`起手干员：${chosen.name}，六星`">
+      <article class="operator-tile" :aria-label="`开局干员：${chosen.name}，六星`">
         <OperatorPortrait :operator="chosen" />
       </article>
       <button class="button primary" :disabled="registered" @click="$emit('confirm')">
         {{ registered ? '已确认开局' : '确认开局' }}
       </button>
-      <button class="text-button" @click="move(backToCandidates)">返回本轮候选</button>
+      <button class="text-button" @click="move(backToCandidates)">返回本轮结果</button>
     </div>
 
     <div class="candidate-bottom-actions">
       <button ref="drawButton" :class="['button', draw ? 'secondary' : 'primary']" :disabled="!canDraw" @click="move(rollCandidates)">
-        <AppIcon name="shuffle" />{{ draw ? '重新抽取候选' : '抽取六星候选' }}
+        <AppIcon name="shuffle" />{{ draw ? '重新抽取干员' : '抽取六星干员' }}
       </button>
       <button v-if="draw" class="text-button" @click="move(editProfessions)">重新填写招募券</button>
     </div>

@@ -1,4 +1,5 @@
 import type { Operator, RecruitGroup, RecruitSlot, RollResult, RollSettings, SlotResult, Squad, Theme } from './types';
+import { availableOperatorPool } from './pool';
 
 export type Rng = () => number;
 
@@ -34,12 +35,6 @@ export function effectiveHopeCost(operator: Operator, squad: Squad): number {
   return Math.max(0, cost);
 }
 
-/** 随机范围（白名单）：3 星及以下不受限制，4/5/6 星必须在范围内 */
-function allowedByPool(operator: Operator, settings: RollSettings): boolean {
-  if (operator.rarity <= 3) return true;
-  return (settings.pool[operator.rarity] ?? []).includes(operator.id);
-}
-
 /** 候选池：职业在券位允许范围内 ∧ 星级符合 rarityCap ∧ 在随机范围内 ∧ 实际消耗不超预算 */
 function buildPool(
   operators: readonly Operator[],
@@ -47,12 +42,12 @@ function buildPool(
   settings: RollSettings,
   squad: Squad,
   budget: number,
+  excluded: readonly Operator[],
 ): Operator[] {
-  return operators.filter(
+  return availableOperatorPool(operators, settings, excluded).filter(
     (o) =>
       slot.classes.includes(o.profession) &&
       (slot.rarityCap === null || o.rarity <= slot.rarityCap) &&
-      allowedByPool(o, settings) &&
       effectiveHopeCost(o, squad) <= budget,
   );
 }
@@ -64,8 +59,9 @@ function rollSlot(
   squad: Squad,
   budget: number,
   rng: Rng,
+  excluded: readonly Operator[],
 ): SlotResult {
-  const pool = buildPool(operators, slot, settings, squad, budget);
+  const pool = buildPool(operators, slot, settings, squad, budget, excluded);
   if (pool.length === 0) return { slot, operator: null, hopeCost: 0, empty: true };
   // 尽量高星：取候选池中最高星级的一档，从中随机一名
   const maxRarity = Math.max(...pool.map((o) => o.rarity));
@@ -79,10 +75,11 @@ export function rollStart(
   operators: readonly Operator[],
   settings: RollSettings,
   rng: Rng = Math.random,
+  excluded: readonly Operator[] = [],
 ): RollResult {
   const squad = pickOne(theme.squads, rng);
   const group = pickOne(theme.recruitGroups, rng);
-  return rollSlotsFor(operators, settings, squad, group, rng);
+  return rollSlotsFor(operators, settings, squad, group, rng, excluded);
 }
 
 /** 给定分队与组合，随机打乱券位顺序并按「尽量高星 + 硬约束」随机所有券位 */
@@ -92,15 +89,18 @@ export function rollSlotsFor(
   squad: Squad,
   group: RecruitGroup,
   rng: Rng = Math.random,
+  excluded: readonly Operator[] = [],
 ): RollResult {
   const initialHope = BASE_HOPE + squad.initialHopeBonus;
   const order = shuffle(group.slots.map((_, i) => i), rng);
   const results = new Array<SlotResult>(group.slots.length);
   let remaining = initialHope;
+  const used = [...excluded];
   for (const i of order) {
-    const r = rollSlot(group.slots[i], operators, settings, squad, remaining, rng);
+    const r = rollSlot(group.slots[i], operators, settings, squad, remaining, rng, used);
     results[i] = r;
     if (r.operator) remaining -= r.hopeCost;
+    if (r.operator?.rarity === 6) used.push(r.operator);
   }
   return { squad, group, initialHope, slots: results };
 }
@@ -120,6 +120,7 @@ export function rerollSlot(
   squad: Squad,
   budget: number,
   rng: Rng = Math.random,
+  excluded: readonly Operator[] = [],
 ): SlotResult {
-  return rollSlot(slot, operators, settings, squad, budget, rng);
+  return rollSlot(slot, operators, settings, squad, budget, rng, excluded);
 }

@@ -240,13 +240,11 @@ describe('设置持久化边界', () => {
     const scope = effectScope();
     const state = scope.run(() => useRollSettings(data.operators, () => storage))!;
     expect(state.settings.value).toEqual(createDefaultSettings(data.operators));
-    expect(state.migrationNotice.value).toContain('全选');
     expect(JSON.parse(values[SETTINGS_KEY]).version).toBe(2);
     scope.stop();
     const restoredScope = effectScope();
     const restored = restoredScope.run(() => useRollSettings(data.operators, () => storage))!;
     expect(restored.settings.value).toEqual(state.settings.value);
-    expect(restored.migrationNotice.value).toBe('');
     restoredScope.stop();
   });
 });

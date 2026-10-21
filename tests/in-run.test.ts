@@ -1,9 +1,9 @@
-import { ref, shallowRef } from 'vue';
+import { ref, shallowRef, watch } from 'vue';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { drawInRunCandidates, IN_RUN_TICKETS, operatorIdentity } from '../src/lib/in-run';
 import { useInRunRecruitment } from '../src/composables/useInRunRecruitment';
 import type { ConfirmedStart } from '../src/composables/useStartConfirmation';
-import type { Operator, RollSettings } from '../src/lib/types';
+import type { Operator, RollSettings, Theme } from '../src/lib/types';
 
 const professions = ['PIONEER', 'WARRIOR', 'TANK', 'SNIPER', 'CASTER', 'MEDIC', 'SUPPORT', 'SPECIAL'];
 function operator(id: string, profession: string, rarity = 6, name = id): Operator {
@@ -81,20 +81,45 @@ function startWith(...initial: Operator[]): ConfirmedStart {
 }
 function setup(initial: ConfirmedStart | null = startWith(operators[0], operators[9])) {
   const start = shallowRef(initial);
+  const theme = shallowRef<Theme | null>({ id: 'test', name: '测试肉鸽', squads: [], recruitGroups: [] });
   const config = ref<RollSettings>({ pool: { 5: [...settings.pool[5]], 6: [...settings.pool[6]] } });
-  return { start, config, ...useInRunRecruitment(operators, config, start, () => 0) };
+  const controller = useInRunRecruitment(theme, operators, config, () => 0);
+  watch(start, (value) => { if (value) controller.applyStart(value); }, { immediate: true, flush: 'sync' });
+  return { start, theme, config, ...controller };
 }
 
 describe('局内名单与开局连接', () => {
-  it('确认开局前不能抽取或登记，确认后排除开局的全部星级', () => {
+  it('无需确认开局即可登记和抽取，之后确认开局仍保留既有名单与排除状态', () => {
     const app = setup(null);
-    expect(app.drawTicket('any')).toBe(false);
-    expect(app.register(operators[0].id, 'manual')).toBe(false);
-    app.start.value = startWith(operators[0], operators[9]);
-    app.drawTicket('single-PIONEER');
-    expect(app.candidates.value.some((o) => [operators[0].id, operators[9].id].includes(o.id))).toBe(false);
-    expect(app.members.value).toHaveLength(2);
-    expect(app.sixStars.value).toEqual([operators[0]]);
+    expect(app.active.value).toBe(true);
+    expect(app.register(operators[0].id, 'emergency')).toBe(true);
+    expect(app.register(operators[1].id, 'manual')).toBe(true);
+    expect(app.drawTicket('single-PIONEER')).toBe(true);
+    expect(app.candidates.value.some((o) => [operators[0].id, operators[1].id].includes(o.id))).toBe(false);
+    const chosen = app.candidates.value[0];
+    app.selectCandidate(chosen.id);
+    expect(app.confirmRecruit()).toBe(true);
+    expect(app.sixStars.value).toEqual([operators[1], chosen, operators[0]]);
+    app.start.value = startWith(operators[3], operators[9]);
+    expect(app.emergency.value).toEqual([operators[0]]);
+    expect(app.recruited.value).toEqual([operators[1], chosen, operators[3], operators[9]]);
+    expect(app.drawTicket('single-PIONEER')).toBe(true);
+    const excluded = [operators[0], operators[1], chosen, operators[3], operators[9]].map((o) => o.id);
+    expect(app.candidates.value.some((o) => excluded.includes(o.id))).toBe(false);
+  });
+  it('直接抽取不改变随机范围，手动已选六星仍先被排除', () => {
+    const app = setup(null);
+    app.config.value.pool = { 6: [operators[0].id, operators[1].id], 5: [operators[9].id] };
+    app.addSelected(operators[0].id);
+    expect(app.drawTicket('single-PIONEER')).toBe(true);
+    expect(app.candidates.value.map((o) => o.id)).toEqual([operators[1].id, operators[9].id]);
+    expect(app.start.value).toBeNull();
+    const theme = app.theme.value;
+    app.theme.value = null;
+    expect(app.drawTicket('single-PIONEER')).toBe(false);
+    expect(app.register(operators[2].id, 'emergency')).toBe(false);
+    app.theme.value = theme;
+    expect(app.candidates.value.map((o) => o.id)).toEqual([operators[1].id, operators[9].id]);
   });
   it('抽到或选中候选不算招募，确认后退出随机范围；放弃和重复确认不追加', () => {
     const app = setup();
@@ -153,10 +178,10 @@ describe('局内名单与开局连接', () => {
     app.config.value.pool = {};
     app.selectCandidate(selected.id);
     expect(app.confirmRecruit()).toBe(true);
-    const start = app.start.value;
-    app.start.value = null;
+    const theme = app.theme.value;
+    app.theme.value = null;
     expect(app.active.value).toBe(false);
-    app.start.value = start;
+    app.theme.value = theme;
     expect(app.members.value).toHaveLength(3);
     app.drawTicket('any');
     expect(app.candidates.value).toEqual([]);
@@ -164,14 +189,15 @@ describe('局内名单与开局连接', () => {
     expect(app.drawTicket('invalid')).toBe(false);
     expect(app.draw.value).toBe(before);
   });
-  it('新确认的开局重置局内招募、应急助力和候选', () => {
+  it('新确认的开局追加名单，保留已选和应急助力并清空候选', () => {
     const app = setup();
     app.register(operators[1].id, 'manual');
     app.register(operators[2].id, 'emergency');
     app.drawTicket('any');
     app.start.value = startWith(operators[3]);
-    expect(app.recruited.value).toEqual([operators[3]]);
-    expect(app.emergency.value).toEqual([]);
+    expect(app.recruited.value).toEqual([operators[0], operators[9], operators[1], operators[3]]);
+    expect(app.emergency.value).toEqual([operators[2]]);
+    expect(app.sixStars.value).toEqual([operators[0], operators[1], operators[3], operators[2]]);
     expect(app.draw.value).toBeNull();
   });
 });
@@ -266,11 +292,11 @@ describe('局内名单移除撤销', () => {
 
   it('切换主题后即使返回同一局也不能撤销，新开局同样使撤销失效', () => {
     const app = setup();
-    const originalStart = app.start.value;
+    const originalTheme = app.theme.value;
     app.removeMember(operators[0].id);
-    app.start.value = null;
+    app.theme.value = null;
     expect(app.canUndoRemoval.value).toBe(false);
-    app.start.value = originalStart;
+    app.theme.value = originalTheme;
     expect(app.undoRemoval()).toBe(false);
     expect(app.recruited.value).toEqual([operators[9]]);
     app.removeMember(operators[9].id);

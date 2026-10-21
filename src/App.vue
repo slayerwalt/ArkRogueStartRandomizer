@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, nextTick, ref } from 'vue';
+import { computed, nextTick, ref, watch } from 'vue';
 import rolllikeLogo from './assets/brand/rolllike-logo-v1.png';
 import rawData from './data/rogue-data.json';
 import rawChallenges from './data/challenge-pools.json';
@@ -13,6 +13,8 @@ import RunWorkspace from './components/RunWorkspace.vue';
 import SettingsPanel from './components/SettingsPanel.vue';
 import StartOptions from './components/StartOptions.vue';
 import StartModeDialog from './components/StartModeDialog.vue';
+import UsageGuideDialog from './components/UsageGuideDialog.vue';
+import OperatorRangePanel from './components/OperatorRangePanel.vue';
 import { useRandomizer } from './composables/useRandomizer';
 import { useCandidateStart } from './composables/useCandidateStart';
 import { useRollSettings } from './composables/useRollSettings';
@@ -20,6 +22,7 @@ import { useStartConfirmation } from './composables/useStartConfirmation';
 import { useStartMode, type StartMode } from './composables/useStartMode';
 import { useInRunRecruitment } from './composables/useInRunRecruitment';
 import { useChallenges } from './composables/useChallenges';
+import { useUsageGuide } from './composables/useUsageGuide';
 import { groupChallengePoolsBySource, readChallengePools, type ChallengePool } from './lib/challenges';
 import { validateGameData } from './lib/data';
 import { ROGUE_THEMES, squadIcon } from './lib/themes';
@@ -52,11 +55,13 @@ const theme = computed(() =>
     : null,
 );
 const activeDialog = ref<'settings' | 'themes' | 'squad' | 'group' | null>(null);
-const { settings, storageNotice, pruneNotice, migrationNotice } = useRollSettings(operators);
+const { isOpen: guideOpen, open: openGuide, close: closeGuide } = useUsageGuide();
+const { settings, storageNotice, pruneNotice } = useRollSettings(operators);
 const { mode: startMode, choose: chooseStartMode, restart: restartStartMode } = useStartMode(theme);
 const modeDialogOpen = ref(false);
 const startModeLabel = computed(() => startMode.value === 'candidates' ? '随心所欲开局' : '全随机开局');
-const candidateStart = useCandidateStart(theme, operators, settings);
+const inRun = useInRunRecruitment(theme, operators, settings);
+const candidateStart = useCandidateStart(theme, operators, settings, Math.random, inRun.sixStars);
 const {
   result,
   squad: quickSquad,
@@ -71,10 +76,10 @@ const {
   selectSquad,
   selectGroup,
   resetDraft: resetQuickDraft,
-} = useRandomizer(theme, operators, settings);
+} = useRandomizer(theme, operators, settings, Math.random, inRun.sixStars);
 const { confirmedStart, recruited, hasConfirmed, collapsed, candidateRegistered, quickRegistered,
-  canConfirmQuick, toggleCollapsed, confirmCandidate, confirmQuick } = useStartConfirmation(theme, candidateStart, result);
-const inRun = useInRunRecruitment(operators, settings, confirmedStart);
+  canConfirmQuick, quickConflict, toggleCollapsed, confirmCandidate, confirmQuick } = useStartConfirmation(theme, candidateStart, result, inRun.sixStars);
+watch(confirmedStart, (start) => { if (start) inRun.applyStart(start); }, { flush: 'sync' });
 const challenges = useChallenges(theme, challengePools);
 const startToggle = ref<HTMLButtonElement>();
 const inRunPanel = ref<InstanceType<typeof InRunRecruitmentPanel>>();
@@ -145,13 +150,17 @@ function selectTheme(id: string) {
         <span class="brand-caption">随机工具</span>
       </div>
       <nav aria-label="工具导航">
+        <button class="nav-button" aria-haspopup="dialog" @click="openGuide">
+          <AppIcon name="help" />
+          说明
+        </button>
         <button
           class="nav-button"
           aria-haspopup="dialog"
           @click="activeDialog = 'themes'"
         >
           <AppIcon name="grid" />
-          切换主题
+          切换肉鸽
         </button>
       </nav>
     </div>
@@ -160,14 +169,7 @@ function selectTheme(id: string) {
   <main id="main" class="workspace" tabindex="-1">
     <section class="theme-banner" aria-label="当前肉鸽主题">
       <div class="theme-copy">
-        <div class="theme-status">
-          <span
-            :class="['status-dot', { unavailable: !theme }]"
-            aria-hidden="true"
-          ></span>
-          {{ theme ? '当前可用' : '尚未开放' }}
-          <span class="theme-index">THEME / 0{{ themeIndex }}</span>
-        </div>
+        <p class="theme-index">THEME / 0{{ themeIndex }}</p>
         <h1>{{ selectedTheme.name }}</h1>
       </div>
       <img
@@ -184,30 +186,11 @@ function selectTheme(id: string) {
       <p>{{ loadError }}</p>
     </div>
     <template v-else-if="theme">
-      <section class="workspace-toolbar" aria-label="本局操作">
-        <div class="session-phase" role="status">
-          <span class="phase-dot" :class="{ active: hasConfirmed }" aria-hidden="true"></span>
-          <strong>{{ hasConfirmed ? '探索进行中' : '开局准备' }}</strong>
-          <span v-if="hasConfirmed">已招募 {{ inRun.members.value.length }} 名</span>
-        </div>
-        <nav class="workspace-navigation" aria-label="功能跳转">
-          <a href="#start-panel">随机开局</a>
-          <a href="#in-run-panel">局内招募</a>
-          <a href="#challenge-panel">随机词条</a>
-        </nav>
-        <button
-          class="button secondary"
-          aria-haspopup="dialog"
-          aria-label="调整干员随机范围"
-          @click="activeDialog = 'settings'"
-        >
-          <AppIcon name="sliders" />随机范围
-        </button>
-      </section>
-      <p v-if="storageNotice || pruneNotice || migrationNotice" class="notice" role="status">
-        {{ [storageNotice, pruneNotice, migrationNotice].filter(Boolean).join(' ') }}
+      <OperatorRangePanel :operators="operators" :settings="settings" @settings="activeDialog = 'settings'" />
+      <p v-if="storageNotice || pruneNotice" class="notice" role="status">
+        {{ [storageNotice, pruneNotice].filter(Boolean).join(' ') }}
       </p>
-      <RunWorkspace :operators="inRun.sixStars.value">
+      <RunWorkspace :controller="inRun">
         <section id="start-panel" class="results-section" :class="{ collapsed }" aria-labelledby="result-title" tabindex="-1">
           <h2 v-if="!startMode" class="start-heading">
             <button class="start-toggle start-entry" aria-label="选择开局方式" aria-haspopup="dialog" @click="modeDialogOpen = true">
@@ -247,6 +230,7 @@ function selectTheme(id: string) {
                   :squad-randomized="squadRandomized" :group-randomized="groupRandomized"
                   :result="result" :block-reason="blockReason"
                   :can-confirm="canConfirmQuick" :registered="quickRegistered"
+                  :confirmation-warning="quickConflict"
                   @roll="run(roll, '已生成新开局')"
                   @roll-squad="run(rollSquad, '已随机分队')"
                   @roll-group="run(rollGroup, '已随机招募组合')"
@@ -254,7 +238,7 @@ function selectTheme(id: string) {
                   @choose-squad="activeDialog = 'squad'" @choose-group="activeDialog = 'group'"
                   @settings="activeDialog = 'settings'" @confirm="finishStart(confirmQuick)"
                 />
-                <p v-if="hasConfirmed" class="result-footnote">重新确认其他开局会重置本局招募和应急助力名单。</p>
+                <p v-if="hasConfirmed" class="result-footnote">重新确认开局会追加干员，已有的已选记录会保留，可在“已选干员”中移除。</p>
               </div>
             </Transition>
           </template>
@@ -289,6 +273,8 @@ function selectTheme(id: string) {
     </p>
   </main>
 
+  <UsageGuideDialog v-if="guideOpen" @close="closeGuide" />
+
   <StartModeDialog v-if="modeDialogOpen" :resetting="startMode !== null" :has-confirmed="hasConfirmed"
     @confirm="applyStartMode" @close="modeDialogOpen = false" />
 
@@ -298,7 +284,7 @@ function selectTheme(id: string) {
       activeDialog === 'settings'
         ? '干员随机范围设置'
         : activeDialog === 'themes'
-          ? '选择肉鸽主题'
+          ? '选择肉鸽'
           : activeDialog === 'squad'
             ? '选择分队'
             : '选择招募组合'

@@ -1,5 +1,6 @@
 import { computed, shallowRef, type Ref } from 'vue';
-import { drawStartCandidates, sixStarPool, START_PROFESSION_SLOTS, type CandidateDraw } from '../lib/candidate-start';
+import { CANDIDATES_PER_SLOT, drawStartCandidates, sixStarPool, START_PROFESSION_SLOTS, type CandidateDraw } from '../lib/candidate-start';
+import { operatorIdentity } from '../lib/pool';
 import { pickOne, type Rng } from '../lib/roll';
 import type { Operator, RollSettings, Squad, Theme } from '../lib/types';
 
@@ -20,6 +21,7 @@ export function useCandidateStart(
   operators: readonly Operator[],
   settings: Readonly<Ref<RollSettings>>,
   rng: Rng = Math.random,
+  excluded: Readonly<Ref<readonly Operator[]>> = shallowRef([]),
 ) {
   const session = shallowRef<CandidateSession | null>(null);
   const current = computed(() => session.value?.themeId === theme.value?.id ? session.value : null);
@@ -29,12 +31,25 @@ export function useCandidateStart(
   const draw = computed(() => current.value?.draw ?? null);
   const professionSlot = computed(() => draw.value ? null : current.value?.professionSlot ??
     (professions.value.length < START_PROFESSION_SLOTS ? professions.value.length : null));
-  const chosen = computed(() => draw.value?.candidates.find((operator) => operator.id === current.value?.selectedId) ?? null);
   const confirmed = computed(() => current.value?.confirmed ?? false);
-  const available = computed(() => sixStarPool(operators, settings.value));
+  const excludedKeys = computed(() => new Set(excluded.value.map(operatorIdentity)));
+  const candidates = computed(() => draw.value?.candidates.filter((operator) => !excludedKeys.value.has(operatorIdentity(operator))) ?? []);
+  const chosen = computed(() => (confirmed.value ? draw.value?.candidates : candidates.value)
+    ?.find((operator) => operator.id === current.value?.selectedId) ?? null);
+  const shortages = computed(() => {
+    const quotas = new Map<string, number>();
+    for (const profession of professions.value) quotas.set(profession, (quotas.get(profession) ?? 0) + CANDIDATES_PER_SLOT);
+    return [...quotas].flatMap(([profession, requested]) => {
+      const actual = candidates.value.filter((operator) => operator.profession === profession).length;
+      return actual < requested ? [{ profession, requested, actual }] : [];
+    });
+  });
+  const available = computed(() => sixStarPool(operators, settings.value, excluded.value));
   const blockReason = computed(() => {
     if (!theme.value) return '当前主题尚未开放随机。';
-    if (!available.value.length) return '请先为六星选择至少一名干员。';
+    if (!available.value.length) return (settings.value.pool[6] ?? []).length
+      ? '当前范围内的六星均已选取，请移除已选干员或调整范围。'
+      : '请先为六星选择至少一名干员。';
     if (professions.value.length === START_PROFESSION_SLOTS &&
       !available.value.some((operator) => professions.value.includes(operator.profession))) {
       return '所选职业中暂无可用六星干员，请核对招募券或调整范围。';
@@ -77,10 +92,10 @@ export function useCandidateStart(
   }
   function rollCandidates() {
     if (!canDraw.value) return;
-    update({ draw: drawStartCandidates(operators, settings.value, professions.value, rng), selectedId: null, confirmed: false, professionSlot: null });
+    update({ draw: drawStartCandidates(operators, settings.value, professions.value, rng, excluded.value), selectedId: null, confirmed: false, professionSlot: null });
   }
   function selectCandidate(id: string) {
-    if (confirmed.value || !draw.value?.candidates.some((operator) => operator.id === id)) return;
+    if (confirmed.value || !candidates.value.some((operator) => operator.id === id)) return;
     update({ selectedId: id });
   }
   function confirmChoice() {
@@ -102,7 +117,7 @@ export function useCandidateStart(
   function resetDraft() {
     if (current.value) session.value = null;
   }
-  return { professions, professionSlot, squad, squadRandomized, draw, chosen, confirmed, available, blockReason, canDraw,
+  return { professions, professionSlot, squad, squadRandomized, draw, candidates, shortages, chosen, confirmed, available, blockReason, canDraw,
     addProfession, selectProfessionSlot, fillProfession, removeProfession, clearProfessions, rollCandidates, selectCandidate, confirmChoice,
     backToCandidates, editProfessions, rollSquad, selectSquad, resetDraft };
 }

@@ -21,7 +21,7 @@ const operators = [
 const settings: RollSettings = { pool: { 4: [], 5: ['five-star'], 6: operators.filter((o) => o.rarity === 6 && o.id !== 'caster-9').map((o) => o.id) } };
 const data = validateGameData(rawData);
 
-describe('六星起手候选', () => {
+describe('六星开局候选', () => {
   it('重复职业位累加配额，同一轮不重复，且只抽范围内的六星', () => {
     const before = JSON.stringify({ operators, settings });
     const result = drawStartCandidates(operators, settings, ['CASTER', 'CASTER', 'CASTER'], () => 0.8);
@@ -138,7 +138,7 @@ describe('候选开局会话', () => {
     expect(confirmation.candidateRegistered.value).toBe(false);
   });
 
-  it('指定分队保留候选和已确认起手，随机按钮状态随操作更新', () => {
+  it('指定分队保留候选和已确认的开局干员，随机按钮状态随操作更新', () => {
     const app = setup();
     selectThree(app);
     app.rollCandidates();
@@ -228,7 +228,7 @@ describe('候选开局会话', () => {
     expect(app.draw.value).toBeNull();
   });
 
-  it('重抽分队保留候选与起手，重新选择职业保留分队但清空本轮', () => {
+  it('重抽分队保留候选与开局干员，重新选择职业保留分队但清空本轮', () => {
     const app = setup();
     selectThree(app);
     app.rollCandidates();

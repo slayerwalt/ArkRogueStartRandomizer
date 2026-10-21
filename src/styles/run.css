@@ -12,8 +12,7 @@
 .feature-actions .button { white-space: nowrap; }
 .feature-actions .text-button { min-height: 44px; }
 .ticket-group { margin-top: 12px; }
-.ticket-group h3,
-.run-emergency h3 { font-size: 14px; font-weight: 600; margin-bottom: 8px; }
+.ticket-group h3 { font-size: 14px; font-weight: 600; margin-bottom: 8px; }
 .ticket-options { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
 .ticket-options .button { padding: 8px 4px; white-space: nowrap; }
 .ticket-options .button:only-child { grid-column: span 2; }
@@ -23,16 +22,7 @@
 .feature-subheading > span { font-size: 12px; color: var(--muted); }
 .in-run-candidates { display: grid; grid-template-columns: repeat(auto-fill, minmax(76px, 1fr)); gap: 8px; margin-block: 12px; }
 .in-run-candidates .operator-tile { width: 100%; min-width: 0; scroll-margin-block-end: 104px; }
-.run-registration { margin-top: 16px; padding-top: 12px; border-top: 1px solid var(--line); }
 .registration-grid { margin-top: 16px; }
-.run-emergency { margin-top: 20px; }
-.run-management { margin-top: 12px; }
-.run-management summary { min-height: 44px; padding-block: 10px; cursor: pointer; font-size: 13px; }
-.run-member-list { display: flex; flex-wrap: wrap; gap: 8px; list-style: none; margin: 8px 0 0; padding: 0; }
-.run-member { display: flex; align-items: center; gap: 8px; max-width: 100%; padding-left: 12px; border: 1px solid var(--line); border-radius: var(--radius-small); background: var(--background); font-size: 12px; }
-.run-member > span { min-width: 0; overflow-wrap: anywhere; }
-.run-member small { margin-left: 6px; color: var(--muted); font-size: 11px; }
-.run-member .text-button { flex: 0 0 44px; width: 44px; height: 44px; }
 .run-status { margin-top: 8px; color: var(--muted); font-size: 12px; }
 .run-status:empty { margin: 0; }
 .challenge-pool-control { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin-block: 20px; }

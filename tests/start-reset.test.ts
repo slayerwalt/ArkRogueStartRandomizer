@@ -1,4 +1,4 @@
-import { ref } from 'vue';
+import { ref, watch } from 'vue';
 import { describe, expect, it } from 'vitest';
 import rawData from '../src/data/rogue-data.json';
 import { validateGameData } from '../src/lib/data';
@@ -13,10 +13,11 @@ const data = validateGameData(rawData);
 function setup() {
   const theme = ref<Theme | null>(data.themes[0]);
   const settings = ref(createDefaultSettings(data.operators));
-  const candidates = useCandidateStart(theme, data.operators, settings, () => 0.31);
-  const quick = useRandomizer(theme, data.operators, settings, () => 0.31);
-  const confirmation = useStartConfirmation(theme, candidates, quick.result);
-  const inRun = useInRunRecruitment(data.operators, settings, confirmation.confirmedStart, () => 0.31);
+  const inRun = useInRunRecruitment(theme, data.operators, settings, () => 0.31);
+  const candidates = useCandidateStart(theme, data.operators, settings, () => 0.31, inRun.sixStars);
+  const quick = useRandomizer(theme, data.operators, settings, () => 0.31, inRun.sixStars);
+  const confirmation = useStartConfirmation(theme, candidates, quick.result, inRun.sixStars);
+  watch(confirmation.confirmedStart, (start) => { if (start) inRun.applyStart(start); }, { flush: 'sync' });
   return { theme, settings, candidates, quick, confirmation, inRun };
 }
 function fillCandidates(app: ReturnType<typeof setup>) {
@@ -69,7 +70,7 @@ describe('开局草稿重置', () => {
     app.candidates.selectCandidate(app.candidates.draw.value!.candidates[0].id);
     expect(app.confirmation.confirmCandidate()).toBe(true);
     expect(app.confirmation.confirmedStart.value).not.toBe(start);
-    expect(app.inRun.recruited.value).toEqual([app.candidates.chosen.value]);
+    expect(app.inRun.recruited.value).toEqual([...run.members.map((member) => member.operator), app.candidates.chosen.value]);
     expect(app.inRun.draw.value).toBeNull();
   });
 
@@ -114,7 +115,9 @@ describe('开局草稿重置', () => {
 
     expect(app.confirmation.confirmQuick()).toBe(true);
     expect(app.confirmation.confirmedStart.value).not.toBe(start);
-    expect(app.inRun.recruited.value).toEqual(app.confirmation.confirmedStart.value!.operators);
+    expect(app.inRun.recruited.value).toEqual(expect.arrayContaining([
+      ...run.members.map((member) => member.operator), ...app.confirmation.confirmedStart.value!.operators,
+    ]));
     expect(app.inRun.draw.value).toBeNull();
   });
 

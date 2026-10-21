@@ -8,8 +8,8 @@ defineProps<{ resetting: boolean; hasConfirmed: boolean }>();
 const emit = defineEmits<{ confirm: [mode: StartMode]; close: [] }>();
 const selected = ref<StartMode | null>(null);
 const options: { id: StartMode; name: string; detail: string }[] = [
-  { id: 'candidates', name: '随心所欲开局', detail: '填写招募券，从六星候选中选择起手' },
-  { id: 'quick', name: '全随机开局', detail: '随机生成分队、招募组合和开局干员' },
+  { id: 'candidates', name: '随心所欲开局', detail: '对应游戏的随心所欲开，选择游戏给出的三张券，随机生成干员' },
+  { id: 'quick', name: '全随机开局', detail: '分队和开局干员全自动随机生成（考虑希望减免）' },
 ];
 </script>
 
@@ -23,7 +23,7 @@ const options: { id: StartMode; name: string; detail: string }[] = [
       </button>
     </div>
     <p v-if="resetting" class="mode-reset-note">
-      将清空当前开局的选择与结果。<template v-if="hasConfirmed">确认新开局后，将替换本局招募和应急助力名单。</template>
+      将清空当前开局的选择与结果。<template v-if="hasConfirmed">已选干员会保留，后续随机会继续排除。</template>
     </p>
     <template #footer>
       <button class="button secondary" @click="emit('close')">取消</button>

@@ -1,4 +1,5 @@
 import { CLASS_CN } from './constants';
+import { availableOperatorPool, operatorIdentity } from './pool';
 import { pickOne, type Rng } from './roll';
 import type { Operator, RollSettings } from './types';
 
@@ -37,10 +38,7 @@ export const IN_RUN_TICKETS: InRunTicket[] = [
   { id: 'any', name: '任意招募', category: '任意券', recipes: [{ professions: Object.keys(CLASS_CN), rarity: 6, count: 16 }] },
 ];
 
-/** 升变共用干员身份；其他异格继续按各自 ID 处理。当前数据中的阿米娅已合并为医疗形态。 */
-export function operatorIdentity(operator: Pick<Operator, 'id' | 'name'>): string {
-  return /^阿米娅(?:[（(].*[）)])?$/.test(operator.name) ? 'amiya' : operator.id;
-}
+export { operatorIdentity } from './pool';
 
 export interface InRunDraw {
   ticket: InRunTicket;
@@ -57,8 +55,7 @@ export function drawInRunCandidates(
   rng: Rng = Math.random,
 ): InRunDraw {
   const used = new Set(excluded.map(operatorIdentity));
-  const allowed = new Set([...(settings.pool[6] ?? []), ...(settings.pool[5] ?? [])]);
-  const pool = operators.filter((operator) => allowed.has(operator.id) && !used.has(operatorIdentity(operator)));
+  const pool = availableOperatorPool(operators, settings, excluded);
   const candidates: Operator[] = [];
   const shortages: InRunDraw['shortages'] = [];
   let expectedCount = 0;

@@ -14,6 +14,7 @@ const props = defineProps<{
   blockReason: string;
   canConfirm: boolean;
   registered: boolean;
+  confirmationWarning: string;
 }>();
 const emit = defineEmits<{
   roll: [];
@@ -99,7 +100,7 @@ const isBlocked = computed(() => Boolean(props.blockReason));
           {{ registered ? '已确认开局' : '确认开局' }}
         </button>
       </div>
-      <p v-if="!canConfirm" class="inline-warning">请先补齐所有券位的干员，再确认开局。</p>
+      <p v-if="!canConfirm" class="inline-warning">{{ confirmationWarning || '请先补齐所有券位的干员，再确认开局。' }}</p>
     </template>
     <div v-else class="welcome-panel">
       <h3>暂无随机结果</h3>

@@ -2,6 +2,7 @@ import { computed, shallowRef, type Ref } from 'vue';
 import type { CandidateStartController } from './useCandidateStart';
 import type { CandidateDraw } from '../lib/candidate-start';
 import type { Operator, RollResult, Theme } from '../lib/types';
+import { operatorIdentity } from '../lib/pool';
 
 export type ConfirmedStart = {
   operators: Operator[];
@@ -16,11 +17,12 @@ interface ConfirmationSession {
   start: ConfirmedStart | null;
 }
 
-/** 已招募名单取自最近一次确认；草稿调整不会改变已确认的快照。 */
+/** 保留最近一次开局快照；累计已选名单由本局会话管理。 */
 export function useStartConfirmation(
   theme: Readonly<Ref<Theme | null>>,
   candidates: CandidateStartController,
   quickResult: Readonly<Ref<RollResult | null>>,
+  excluded: Readonly<Ref<readonly Operator[]>> = shallowRef([]),
 ) {
   const session = shallowRef<ConfirmationSession | null>(null);
   const current = computed(() => session.value?.themeId === theme.value?.id ? session.value : null);
@@ -35,7 +37,16 @@ export function useStartConfirmation(
   });
   const quickRegistered = computed(() => current.value?.start?.mode === 'quick' &&
     current.value.start.source === quickResult.value);
-  const canConfirmQuick = computed(() => Boolean(theme.value && quickResult.value?.slots.length &&
+  const quickConflict = computed(() => {
+    if (quickRegistered.value) return '';
+    const keys = new Set(excluded.value.map(operatorIdentity));
+    const previous = current.value?.start;
+    const retained = previous?.mode === 'quick' ? previous.source.slots : [];
+    const names = quickResult.value?.slots.flatMap((slot) => !retained.includes(slot) && slot.operator?.rarity === 6 &&
+      keys.has(operatorIdentity(slot.operator)) ? [slot.operator.name] : []) ?? [];
+    return names.length ? `${[...new Set(names)].join('、')}已在“已选干员”中，请重抽对应券位。` : '';
+  });
+  const canConfirmQuick = computed(() => Boolean(theme.value && quickResult.value?.slots.length && !quickConflict.value &&
     quickResult.value.slots.every((slot) => slot.operator && !slot.empty)));
 
   function update(patch: Partial<ConfirmationSession>) {
@@ -52,12 +63,14 @@ export function useStartConfirmation(
     const draw = candidates.draw.value;
     const chosen = candidates.chosen.value;
     if (!theme.value || !draw || !chosen || chosen.rarity !== 6) return false;
-    candidates.confirmChoice();
     const previous = current.value?.start;
     if (previous?.mode === 'candidates' && previous.source === draw && previous.chosenId === chosen.id) {
+      candidates.confirmChoice();
       update({ collapsed: true });
       return true;
     }
+    if (excluded.value.some((operator) => operatorIdentity(operator) === operatorIdentity(chosen))) return false;
+    candidates.confirmChoice();
     update({
       collapsed: true,
       start: { mode: 'candidates', source: draw, chosenId: chosen.id, operators: [chosen] },
@@ -77,5 +90,5 @@ export function useStartConfirmation(
     return true;
   }
   return { confirmedStart, recruited, hasConfirmed, collapsed, candidateRegistered, quickRegistered,
-    canConfirmQuick, toggleCollapsed, confirmCandidate, confirmQuick };
+    canConfirmQuick, quickConflict, toggleCollapsed, confirmCandidate, confirmQuick };
 }

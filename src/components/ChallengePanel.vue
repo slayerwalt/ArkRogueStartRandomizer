@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, nextTick, ref, watch } from 'vue';
+import { computed, nextTick, ref, shallowRef, useId, watch } from 'vue';
 import { CHALLENGE_RESTRICTION_LABELS, groupChallengePoolsBySource, type ChallengePool } from '../lib/challenges';
 import type { ChallengeController } from '../composables/useChallenges';
 import AppIcon from './AppIcon.vue';
@@ -18,6 +18,8 @@ const poolSummary = computed(() => !selectedPools.value.length
 const panel = ref<HTMLElement | null>(null);
 const drawButton = ref<HTMLButtonElement | null>(null);
 const undoButton = ref<HTMLButtonElement | null>(null);
+const expanded = shallowRef(false);
+const contentId = `${useId()}-challenge-content`;
 
 function focusDrawOrList() {
   const target = canDraw.value ? drawButton.value : panel.value?.querySelector<HTMLButtonElement>('.challenge-remove, .challenge-pool-option');
@@ -48,49 +50,58 @@ watch(canUndo, async (available) => {
 <template>
   <section id="challenge-panel" ref="panel" class="feature-section challenge-panel" aria-labelledby="challenge-title" tabindex="-1">
     <header class="challenge-heading">
-      <div class="challenge-heading-label">
-        <h2 id="challenge-title" class="feature-title">随机词条</h2>
-        <span v-if="selected.length" class="challenge-count"><span class="sr-only">已抽取 </span>{{ selected.length }}<span class="sr-only"> 条</span></span>
-      </div>
-      <button v-if="selected.length" class="text-button challenge-clear" aria-label="清空本局已抽词条" @click="clearTerms">清空</button>
+      <h2 id="challenge-title" class="feature-title">
+        <button class="challenge-toggle" :aria-expanded="expanded" :aria-controls="contentId" @click="expanded = !expanded">
+          <span class="challenge-heading-label">
+            <span>随机词条挑战</span>
+            <span v-if="selected.length" class="challenge-count"><span class="sr-only">已抽取 </span>{{ selected.length }}<span class="sr-only"> 条</span></span>
+          </span>
+          <span class="challenge-toggle-hint">{{ expanded ? '收起' : '展开' }}<AppIcon name="chevron" :class="{ expanded }" /></span>
+        </button>
+      </h2>
+      <button v-if="expanded && selected.length" class="text-button challenge-clear" aria-label="清空本局已抽词条" @click="clearTerms">清空</button>
     </header>
-    <p v-if="error || !pools.length" class="inline-warning" role="status">{{ error || '暂无可用词条池。' }}</p>
-    <template v-else>
-      <div class="challenge-controls">
-        <fieldset class="challenge-source">
-          <legend>词条池<span>可多选</span></legend>
-          <div class="challenge-pool-options">
-            <button v-for="item in poolOptions" :key="item.id" type="button" class="challenge-pool-option"
-              :class="{ selected: item.active }" :aria-pressed="item.active" :aria-label="item.name"
-              :aria-describedby="`challenge-source-${item.sourceNumber}`" @click="togglePool(item.id)">
-              <span class="challenge-pool-name">{{ item.name }}<sup class="challenge-source-marker" aria-hidden="true">{{ item.sourceNumber }}</sup></span>
-              <span class="challenge-pool-size">{{ item.terms.length }} 条</span>
-            </button>
+    <Transition name="section-fold">
+      <div :id="contentId" v-show="expanded">
+        <p v-if="error || !pools.length" class="inline-warning" role="status">{{ error || '暂无可用词条池。' }}</p>
+        <template v-else>
+          <div class="challenge-controls">
+            <fieldset class="challenge-source">
+              <legend>词条池<span>可多选</span></legend>
+              <div class="challenge-pool-options">
+                <button v-for="item in poolOptions" :key="item.id" type="button" class="challenge-pool-option"
+                  :class="{ selected: item.active }" :aria-pressed="item.active" :aria-label="item.name"
+                  :aria-describedby="`challenge-source-${item.sourceNumber}`" @click="togglePool(item.id)">
+                  <span class="challenge-pool-name">{{ item.name }}<sup class="challenge-source-marker" aria-hidden="true">{{ item.sourceNumber }}</sup></span>
+                  <span class="challenge-pool-size">{{ item.terms.length }} 条</span>
+                </button>
+              </div>
+            </fieldset>
+            <div class="challenge-draw-actions">
+              <p id="challenge-pool-summary" class="challenge-pool-summary" role="status">{{ poolSummary }}</p>
+              <button ref="drawButton" class="button primary challenge-draw" :disabled="!canDraw" aria-describedby="challenge-pool-summary" @click="draw"><AppIcon name="shuffle" />随机抽取词条</button>
+            </div>
           </div>
-        </fieldset>
-        <div class="challenge-draw-actions">
-          <p id="challenge-pool-summary" class="challenge-pool-summary" role="status">{{ poolSummary }}</p>
-          <button ref="drawButton" class="button primary challenge-draw" :disabled="!canDraw" aria-describedby="challenge-pool-summary" @click="draw"><AppIcon name="shuffle" />随机抽取词条</button>
-        </div>
-      </div>
-      <div v-if="canUndo" class="challenge-undo" role="status">
-        <span>{{ undoMessage }}</span>
-        <button ref="undoButton" class="text-button" aria-label="撤销移除词条" @click="undoRemoval">撤销</button>
-      </div>
-      <p v-if="!selected.length" class="challenge-placeholder">暂无已抽词条</p>
-      <TransitionGroup name="challenge-item" tag="ol" class="challenge-entries" aria-label="已抽挑战词条">
-        <li v-for="(term, index) in recentFirst" :key="term.id" class="challenge-entry" :class="[term.restriction, { 'is-latest': index === 0 }]">
-          <div class="challenge-entry-topline">
-            <span class="challenge-restriction">{{ CHALLENGE_RESTRICTION_LABELS[term.restriction] }}</span>
-            <span v-if="index === 0" class="challenge-latest">最新</span>
-            <span class="challenge-index">{{ String(selected.length - index).padStart(2, '0') }}</span>
+          <div v-if="canUndo" class="challenge-undo" role="status">
+            <span>{{ undoMessage }}</span>
+            <button ref="undoButton" class="text-button" aria-label="撤销移除词条" @click="undoRemoval">撤销</button>
           </div>
-          <p>{{ term.text }}</p>
-          <button class="text-button challenge-remove" :aria-label="`移除词条${term.text}`" @click="removeTerm(term.id)"><AppIcon name="close" /></button>
-        </li>
-      </TransitionGroup>
-      <p class="sr-only" role="status" aria-live="polite">{{ lastDrawn ? `已抽取 ${selected.length} 条，最新词条：${CHALLENGE_RESTRICTION_LABELS[lastDrawn.restriction]}${lastDrawn.text}` : '已抽词条为空' }}</p>
-    </template>
+          <p v-if="!selected.length" class="challenge-placeholder">暂无已抽词条</p>
+          <TransitionGroup name="challenge-item" tag="ol" class="challenge-entries" aria-label="已抽挑战词条">
+            <li v-for="(term, index) in recentFirst" :key="term.id" class="challenge-entry" :class="[term.restriction, { 'is-latest': index === 0 }]">
+              <div class="challenge-entry-topline">
+                <span class="challenge-restriction">{{ CHALLENGE_RESTRICTION_LABELS[term.restriction] }}</span>
+                <span v-if="index === 0" class="challenge-latest">最新</span>
+                <span class="challenge-index">{{ String(selected.length - index).padStart(2, '0') }}</span>
+              </div>
+              <p>{{ term.text }}</p>
+              <button class="text-button challenge-remove" :aria-label="`移除词条${term.text}`" @click="removeTerm(term.id)"><AppIcon name="close" /></button>
+            </li>
+          </TransitionGroup>
+          <p class="sr-only" role="status" aria-live="polite">{{ lastDrawn ? `已抽取 ${selected.length} 条，最新词条：${CHALLENGE_RESTRICTION_LABELS[lastDrawn.restriction]}${lastDrawn.text}` : '已抽词条为空' }}</p>
+        </template>
+      </div>
+    </Transition>
   </section>
 </template>
 
@@ -99,7 +110,11 @@ watch(canUndo, async (available) => {
 .challenge-heading, .challenge-heading-label { display: flex; align-items: center; gap: 8px; }
 .challenge-heading { justify-content: space-between; min-height: 44px; }
 .challenge-heading-label { flex-wrap: wrap; min-width: 0; }
-.challenge-heading .feature-title { min-width: 0; }
+.challenge-heading .feature-title { flex: 1; min-width: 0; }
+.challenge-toggle { display: flex; align-items: center; justify-content: space-between; gap: 12px; width: 100%; min-height: 44px; padding: 0; border: 0; border-radius: 6px; background: transparent; color: inherit; font: inherit; text-align: left; }
+.challenge-toggle-hint { display: inline-flex; align-items: center; gap: 6px; flex-shrink: 0; color: var(--muted); font-size: 12px; font-weight: 400; }
+.challenge-toggle-hint .icon { transition: transform .2s; }
+.challenge-toggle-hint .icon.expanded { transform: rotate(90deg); }
 .challenge-count { min-width: 22px; padding: 2px 5px; border-radius: 6px; background: var(--primary-soft); color: var(--primary); font-size: 11px; text-align: center; font-variant-numeric: tabular-nums; }
 .challenge-clear { flex-shrink: 0; min-width: 44px; min-height: 44px; padding: 4px; font-size: 12px; }
 .challenge-controls { display: grid; gap: 10px; margin-top: 10px; }
