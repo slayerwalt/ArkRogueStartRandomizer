@@ -2,15 +2,18 @@
 import { nextTick, ref, watch } from 'vue';
 import { IN_RUN_TICKETS } from '../lib/in-run';
 import { CLASS_CN } from '../lib/constants';
+import { RECRUIT_TICKET_IMAGES } from '../lib/recruit-ticket-images';
 import type { InRunController } from '../composables/useInRunRecruitment';
+import AppIcon from './AppIcon.vue';
 import OperatorPortrait from './OperatorPortrait.vue';
+import RecruitCountSettingsDialog from './RecruitCountSettingsDialog.vue';
+import type { RecruitCounts } from '../lib/recruit-counts';
 
 const props = defineProps<{ controller: InRunController }>();
 const { active, draw, candidates, chosen, message,
   drawTicket, selectCandidate, confirmRecruit, discardDraw } = props.controller;
-const ticketGroups = ['单职业券', '双职业券', '定向券', '任意券'].map((name) => ({
-  name, tickets: IN_RUN_TICKETS.filter((ticket) => ticket.category === name),
-}));
+const { counts, storageNotice, updateCounts } = props.controller.countSettings;
+const countSettingsOpen = ref(false);
 const heading = ref<HTMLHeadingElement>();
 const candidatesHeading = ref<HTMLHeadingElement>();
 const ticketPickerOpen = ref(false);
@@ -36,21 +39,31 @@ async function discardCurrentDraw() {
   await nextTick();
   focusHeading();
 }
+function saveCounts(next: RecruitCounts) {
+  if (updateCounts(next)) countSettingsOpen.value = false;
+}
 defineExpose({ focusHeading });
 </script>
 
 <template>
   <section id="in-run-panel" class="feature-section" aria-labelledby="in-run-title" tabindex="-1">
-    <h2 id="in-run-title" ref="heading" class="feature-title in-run-focus-heading" tabindex="-1">随机抽取干员</h2>
+    <div class="in-run-heading">
+      <h2 id="in-run-title" ref="heading" class="feature-title in-run-focus-heading" tabindex="-1">随机抽取干员</h2>
+      <button v-if="active" class="button secondary count-settings-button" aria-haspopup="dialog" @click="countSettingsOpen = true">
+        <AppIcon name="sliders" />数量设置
+      </button>
+    </div>
     <p v-if="!active" class="feature-description">当前肉鸽暂未开放随机抽取干员。</p>
     <template v-else>
+      <p class="feature-description count-summary">{{ draw ? '下次抽取' : '抽取数量' }}：六星 {{ counts.six }} 名 · 五星 {{ counts.five }} 名</p>
+      <p v-if="storageNotice" class="feature-description" role="status">{{ storageNotice }}</p>
       <div v-if="message" class="run-feedback">
         <p class="run-status" role="status" aria-live="polite">{{ message }}</p>
       </div>
       <div v-if="draw" class="in-run-draw">
         <div class="feature-subheading in-run-result-heading">
           <h3 ref="candidatesHeading" class="in-run-focus-heading" tabindex="-1">可选结果</h3>
-          <span class="current-ticket">{{ draw.ticket.name }}{{ draw.ticket.id === 'any' ? '券' : '招募券' }}</span>
+          <span class="current-ticket">{{ draw.ticket.name }}招募券</span>
           <span class="in-run-result-count">{{ candidates.length }} 名干员</span>
         </div>
         <p v-if="candidates.length < draw.expectedCount" class="inline-warning" role="status">
@@ -72,28 +85,42 @@ defineExpose({ focusHeading });
         </div>
       </div>
       <div id="in-run-tickets" v-show="!draw || ticketPickerOpen" class="in-run-ticket-picker" :class="{ compact: draw }">
-        <div v-for="group in ticketGroups" :key="group.name" class="ticket-group">
-          <h3>{{ group.name }}</h3>
-          <div class="ticket-options" role="group" :aria-label="group.name">
-            <button v-for="ticket in group.tickets" :key="ticket.id" class="button secondary"
-              :class="{ 'current-ticket-option': draw?.ticket.id === ticket.id }" :aria-pressed="draw?.ticket.id === ticket.id"
-              :aria-label="`使用${ticket.name}${ticket.id === 'any' ? '券' : '招募券'}抽取干员`" @click="chooseTicket(ticket.id)">{{ ticket.name }}</button>
-          </div>
+        <div class="recruit-ticket-options" role="group" aria-label="选择招募券">
+          <button v-for="ticket in IN_RUN_TICKETS" :key="ticket.id" class="recruit-ticket-option" type="button"
+            :class="{ 'current-ticket-option': draw?.ticket.id === ticket.id }" :aria-pressed="draw?.ticket.id === ticket.id"
+            :aria-label="`使用${ticket.name}招募券抽取干员`" @click="chooseTicket(ticket.id)">
+            <img :src="RECRUIT_TICKET_IMAGES[ticket.id]" alt="" width="138" height="178" loading="lazy" decoding="async" class="recruit-ticket-image" />
+            <span class="recruit-ticket-name">{{ ticket.name }}</span>
+            <span v-if="draw?.ticket.id === ticket.id" class="recruit-ticket-check"><AppIcon name="check" /></span>
+          </button>
         </div>
       </div>
     </template>
+    <RecruitCountSettingsDialog v-if="active && countSettingsOpen" :counts="counts" @save="saveCounts" @close="countSettingsOpen = false" />
   </section>
 </template>
 
 <style scoped>
 .in-run-focus-heading { scroll-margin-top: 16px; }
+.in-run-heading { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; }
+.in-run-heading .count-settings-button { min-height: 44px; padding: 8px 10px; white-space: nowrap; }
+.count-settings-button .icon { width: 16px; height: 16px; }
+.count-summary { margin-top: 4px; }
 .in-run-draw { container-type: inline-size; }
 .in-run-result-heading { justify-content: flex-start; }
 .current-ticket { padding: 2px 8px; border: 1px solid var(--line); border-radius: 6px; background: var(--background); font-size: 12px; white-space: nowrap; }
 .in-run-result-count { margin-left: auto; white-space: nowrap; }
-.in-run-ticket-picker.compact { margin-top: 8px; padding: 2px 10px 10px; border: 1px solid var(--line); border-radius: 8px; }
-.in-run-ticket-picker.compact .ticket-group { margin-top: 8px; }
-.current-ticket-option { border-color: var(--primary); background: var(--primary-soft); }
+.in-run-ticket-picker { container: recruit-tickets / inline-size; margin-top: 12px; }
+.in-run-ticket-picker.compact { margin-top: 8px; padding: 10px; border: 1px solid var(--line); border-radius: 8px; }
+.recruit-ticket-options { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+.recruit-ticket-option { position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; min-width: 0; min-height: 104px; padding: 8px 4px; border: 1px solid var(--line); border-radius: var(--radius-small); background: var(--surface); color: var(--ink); cursor: pointer; transition: border-color 120ms ease, background-color 120ms ease; }
+.recruit-ticket-option:hover { border-color: var(--primary); background: var(--primary-soft); }
+.recruit-ticket-option.current-ticket-option { border-color: var(--primary); background: var(--primary-soft); box-shadow: inset 0 0 0 1px var(--primary); }
+.recruit-ticket-image { display: block; width: 54px; max-width: 100%; height: 70px; object-fit: contain; }
+.recruit-ticket-name { font-size: 13px; line-height: 20px; white-space: nowrap; }
+.current-ticket-option .recruit-ticket-name { font-weight: 600; }
+.recruit-ticket-check { position: absolute; top: 4px; right: 4px; display: grid; place-items: center; width: 18px; height: 18px; border: 2px solid var(--surface); border-radius: 50%; background: var(--primary); color: #fff; }
+.recruit-ticket-check .icon { width: 12px; height: 12px; }
 .in-run-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--line); }
 .in-run-actions > button { min-height: 44px; justify-content: center; white-space: nowrap; }
 .in-run-discard { padding-inline: 12px; color: var(--muted); font-size: 13px; }
@@ -103,9 +130,10 @@ defineExpose({ focusHeading });
 @container (max-width: 420px) {
   .in-run-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
-@media (min-width: 760px) {
-  .in-run-ticket-picker { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 16px; margin-top: 12px; }
-  .in-run-ticket-picker .ticket-group, .in-run-ticket-picker.compact .ticket-group { margin-top: 0; }
-  .in-run-ticket-picker .ticket-group:not(:first-child) .ticket-options { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+@container recruit-tickets (min-width: 400px) {
+  .recruit-ticket-options { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+}
+@container recruit-tickets (min-width: 560px) {
+  .recruit-ticket-options { grid-template-columns: repeat(8, minmax(0, 1fr)); }
 }
 </style>

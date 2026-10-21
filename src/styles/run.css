@@ -11,11 +11,6 @@
 .feature-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
 .feature-actions .button { white-space: nowrap; }
 .feature-actions .text-button { min-height: 44px; }
-.ticket-group { margin-top: 12px; }
-.ticket-group h3 { font-size: 14px; font-weight: 600; margin-bottom: 8px; }
-.ticket-options { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
-.ticket-options .button { padding: 8px 4px; white-space: nowrap; }
-.ticket-options .button:only-child { grid-column: span 2; }
 .in-run-draw { margin-top: 12px; }
 .feature-subheading { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 8px; }
 .feature-subheading h3 { font-size: 14px; }
@@ -43,6 +38,5 @@
   .challenge-pool-control select { font-size: 16px; }
 }
 @media (max-width: 360px) {
-  .ticket-options { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .challenge-pool-control label { width: 100%; }
 }

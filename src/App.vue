@@ -289,7 +289,6 @@ function selectTheme(id: string) {
             ? '选择分队'
             : '选择招募组合'
     "
-    :drawer="activeDialog === 'settings'"
     @close="activeDialog = null"
   >
     <template v-if="activeDialog === 'settings'">

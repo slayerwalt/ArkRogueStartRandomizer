@@ -3,6 +3,7 @@ import { drawInRunCandidates, IN_RUN_TICKETS, operatorIdentity, type InRunDraw }
 import type { Rng } from '../lib/roll';
 import type { Operator, RollSettings, Theme } from '../lib/types';
 import type { ConfirmedStart } from './useStartConfirmation';
+import { useRecruitCounts } from './useRecruitCounts';
 
 export type RecruitSource = 'start' | 'random' | 'manual' | 'temporary';
 export type RegistrationKind = 'manual' | 'temporary' | 'emergency';
@@ -23,6 +24,7 @@ export function useInRunRecruitment(
   settings: Readonly<Ref<RollSettings>>,
   rng: Rng = Math.random,
 ) {
+  const countSettings = useRecruitCounts();
   const session = shallowRef<RunSession | null>(null);
   const removal = shallowRef<{ before: RunSession; name: string } | null>(null);
   let removalTimeout: ReturnType<typeof setTimeout> | undefined;
@@ -84,7 +86,7 @@ export function useInRunRecruitment(
   function drawTicket(id: string) {
     const ticket = IN_RUN_TICKETS.find((item) => item.id === id);
     if (!active.value || !ticket) return false;
-    const next = drawInRunCandidates(operators, settings.value, ticket, excluded.value, rng);
+    const next = drawInRunCandidates(operators, settings.value, ticket, excluded.value, countSettings.counts.value, rng);
     update({ draw: next, selectedId: null, message: '' });
     return true;
   }
@@ -145,7 +147,7 @@ export function useInRunRecruitment(
     const unavailable = new Set((kind === 'emergency' ? excluded.value : recruited.value).map(operatorIdentity));
     return operators.filter((operator) => !unavailable.has(operatorIdentity(operator)));
   }
-  return { active, members, emergency, recruited, sixStars, draw, candidates, chosen, message, canUndoRemoval,
+  return { active, members, emergency, recruited, sixStars, draw, candidates, chosen, message, canUndoRemoval, countSettings,
     applyStart, addSelected, selectedOptions, removeSelected,
     drawTicket, selectCandidate, confirmRecruit, register, removeMember, removeEmergency, undoRemoval, discardDraw, registrationOptions };
 }

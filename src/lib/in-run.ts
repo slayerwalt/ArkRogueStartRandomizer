@@ -1,6 +1,7 @@
 import { CLASS_CN } from './constants';
 import { availableOperatorPool, operatorIdentity } from './pool';
 import { pickOne, type Rng } from './roll';
+import { DEFAULT_RECRUIT_COUNTS, isRecruitCounts, type RecruitCounts } from './recruit-counts';
 import type { Operator, RollSettings } from './types';
 
 export interface RecruitRecipe {
@@ -12,30 +13,23 @@ export interface RecruitRecipe {
 export interface InRunTicket {
   id: string;
   name: string;
-  category: '单职业券' | '双职业券' | '定向券' | '任意券';
-  recipes: RecruitRecipe[];
+  professions: readonly string[];
 }
 
-function professionRecipes(professions: readonly string[], six = 2, five = 3): RecruitRecipe[] {
-  return [{ professions, rarity: 6, count: six }, { professions, rarity: 5, count: five }];
-}
-
-/** 沿用参考抽取器 1.2 的普通档配额；定向券合并职业池，任意券只提供六星。 */
+/** 招募券仅限制职业范围；六星、五星分别从合并职业池中按用户设置的总人数抽取。 */
 export const IN_RUN_TICKETS: InRunTicket[] = [
   ...Object.entries(CLASS_CN).map(([profession, name]): InRunTicket => ({
-    id: `single-${profession}`, name, category: '单职业券', recipes: professionRecipes([profession]),
+    id: `single-${profession}`, name, professions: [profession],
   })),
   ...[
     { id: 'guard-vanguard', name: '近锋', professions: ['WARRIOR', 'PIONEER'] },
     { id: 'sniper-medic', name: '狙医', professions: ['SNIPER', 'MEDIC'] },
     { id: 'caster-specialist', name: '术特', professions: ['CASTER', 'SPECIAL'] },
     { id: 'defender-supporter', name: '重辅', professions: ['TANK', 'SUPPORT'] },
-  ].map(({ id, name, professions }): InRunTicket => ({
-    id, name, category: '双职业券', recipes: professions.flatMap((profession) => professionRecipes([profession])),
-  })),
-  { id: 'ground', name: '地面', category: '定向券', recipes: professionRecipes(['WARRIOR', 'PIONEER', 'SPECIAL', 'TANK'], 6, 8) },
-  { id: 'ranged', name: '高台', category: '定向券', recipes: professionRecipes(['SNIPER', 'MEDIC', 'CASTER', 'SUPPORT'], 6, 8) },
-  { id: 'any', name: '任意招募', category: '任意券', recipes: [{ professions: Object.keys(CLASS_CN), rarity: 6, count: 16 }] },
+  ],
+  { id: 'ground', name: '地面', professions: ['WARRIOR', 'PIONEER', 'SPECIAL', 'TANK'] },
+  { id: 'ranged', name: '高台', professions: ['SNIPER', 'MEDIC', 'CASTER', 'SUPPORT'] },
+  { id: 'any', name: '任意', professions: Object.keys(CLASS_CN) },
 ];
 
 export { operatorIdentity } from './pool';
@@ -52,14 +46,20 @@ export function drawInRunCandidates(
   settings: RollSettings,
   ticket: InRunTicket,
   excluded: readonly Operator[],
+  counts: Readonly<RecruitCounts> = DEFAULT_RECRUIT_COUNTS,
   rng: Rng = Math.random,
 ): InRunDraw {
+  if (!isRecruitCounts(counts)) throw new RangeError('抽取数量必须是 0 至 99 的整数，且合计至少 1 名。');
   const used = new Set(excluded.map(operatorIdentity));
   const pool = availableOperatorPool(operators, settings, excluded);
   const candidates: Operator[] = [];
   const shortages: InRunDraw['shortages'] = [];
   let expectedCount = 0;
-  for (const recipe of ticket.recipes) {
+  const recipes: RecruitRecipe[] = [
+    { professions: ticket.professions, rarity: 6, count: counts.six },
+    { professions: ticket.professions, rarity: 5, count: counts.five },
+  ];
+  for (const recipe of recipes) {
     expectedCount += recipe.count;
     let available = pool.filter((operator) => operator.rarity === recipe.rarity &&
       recipe.professions.includes(operator.profession) && !used.has(operatorIdentity(operator)));

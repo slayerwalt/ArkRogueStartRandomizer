@@ -22,7 +22,7 @@ export function useRollSettings(
   const persist = () => {
     if (!storage) return;
     try {
-      saveSettings(storage, settings.value);
+      saveSettings(storage, settings.value, operators);
     } catch {
       failed();
     }

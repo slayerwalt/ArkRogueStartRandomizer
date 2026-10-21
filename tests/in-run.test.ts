@@ -2,6 +2,7 @@ import { ref, shallowRef, watch } from 'vue';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { drawInRunCandidates, IN_RUN_TICKETS, operatorIdentity } from '../src/lib/in-run';
 import { useInRunRecruitment } from '../src/composables/useInRunRecruitment';
+import { DEFAULT_RECRUIT_COUNTS } from '../src/lib/recruit-counts';
 import type { ConfirmedStart } from '../src/composables/useStartConfirmation';
 import type { Operator, RollSettings, Theme } from '../src/lib/types';
 
@@ -16,44 +17,55 @@ const settings: RollSettings = { pool: { 4: [], 5: operators.filter((o) => o.rar
 const ticket = (id: string) => IN_RUN_TICKETS.find((item) => item.id === id)!;
 
 describe('局内招募券抽样', () => {
-  it('单职业和双职业保持每职业两名六星、三名五星，完全不读取希望预算', () => {
-    for (const [id, expectedProfessions] of [['single-PIONEER', ['PIONEER']], ['guard-vanguard', ['WARRIOR', 'PIONEER']]] as const) {
-      const result = drawInRunCandidates(operators, settings, ticket(id), [], () => 0);
-      expect(result.candidates).toHaveLength(expectedProfessions.length * 5);
+  it('所有招募券默认抽五名六星、不抽五星，完全不读取希望预算', () => {
+    for (const option of IN_RUN_TICKETS) {
+      const result = drawInRunCandidates(operators, settings, option, [], DEFAULT_RECRUIT_COUNTS, () => 0);
+      expect(result.candidates).toHaveLength(5);
+      expect(result.expectedCount).toBe(5);
       expect(result.shortages).toEqual([]);
-      for (const profession of expectedProfessions) {
-        expect(result.candidates.filter((o) => o.profession === profession && o.rarity === 6)).toHaveLength(2);
-        expect(result.candidates.filter((o) => o.profession === profession && o.rarity === 5)).toHaveLength(3);
-      }
+      expect(result.candidates.filter((o) => o.rarity === 6)).toHaveLength(5);
+      expect(result.candidates.filter((o) => o.rarity === 5)).toHaveLength(0);
+      expect(result.candidates.every((o) => option.professions.includes(o.profession))).toBe(true);
       expect(result.candidates.every((o) => o.hopeCost === 999)).toBe(true);
     }
   });
-  it('定向券合并四职业抽取六名六星和八名五星，不设置每职业保底', () => {
-    for (const [id, allowed] of [['ground', ['PIONEER', 'WARRIOR', 'TANK', 'SPECIAL']],
+  it('双职业与定向券按合并职业池抽总人数，不按职业倍增或设置职业保底', () => {
+    for (const [id, allowed] of [['guard-vanguard', ['PIONEER', 'WARRIOR']],
+      ['ground', ['PIONEER', 'WARRIOR', 'TANK', 'SPECIAL']],
       ['ranged', ['SNIPER', 'CASTER', 'MEDIC', 'SUPPORT']]] as const) {
-      const result = drawInRunCandidates(operators, settings, ticket(id), [], () => 0);
+      const result = drawInRunCandidates(operators, settings, ticket(id), [], { six: 6, five: 8 }, () => 0);
       expect(result.candidates.filter((o) => o.rarity === 6)).toHaveLength(6);
       expect(result.candidates.filter((o) => o.rarity === 5)).toHaveLength(8);
       expect(result.candidates.every((o) => (allowed as readonly string[]).includes(o.profession))).toBe(true);
       expect(new Set(result.candidates.map((o) => o.profession)).size).toBe(1);
     }
   });
-  it('任意券只抽十六名六星，同轮不重复，抽样不修改输入', () => {
+  it('任意券支持自定义六星和五星数量，同轮不重复，抽样不修改输入', () => {
     const before = JSON.stringify({ operators, settings });
-    const result = drawInRunCandidates(operators, settings, ticket('any'), [], () => 0.8);
-    expect(result.candidates).toHaveLength(16);
-    expect(result.candidates.every((o) => o.rarity === 6)).toBe(true);
-    expect(new Set(result.candidates.map((o) => o.id)).size).toBe(16);
+    const result = drawInRunCandidates(operators, settings, ticket('any'), [], { six: 16, five: 7 }, () => 0.8);
+    expect(result.candidates).toHaveLength(23);
+    expect(result.candidates.filter((o) => o.rarity === 6)).toHaveLength(16);
+    expect(result.candidates.filter((o) => o.rarity === 5)).toHaveLength(7);
+    expect(new Set(result.candidates.map((o) => o.id)).size).toBe(23);
     expect(JSON.stringify({ operators, settings })).toBe(before);
+  });
+  it.each([{ six: 0, five: 4 }, { six: 3, five: 0 }])('允许单独关闭一个星级：%o', (counts) => {
+    for (const option of IN_RUN_TICKETS) {
+      const result = drawInRunCandidates(operators, settings, option, [], counts, () => 0.3);
+      expect(result.candidates.filter((o) => o.rarity === 6)).toHaveLength(counts.six);
+      expect(result.candidates.filter((o) => o.rarity === 5)).toHaveLength(counts.five);
+      expect(result.expectedCount).toBe(counts.six + counts.five);
+      expect(result.shortages).toEqual([]);
+    }
   });
   it('过滤手动范围和排除名单，候选不足时不跨星级或职业补齐', () => {
     const pool = { pool: { 5: ['PIONEER-5-0', 'PIONEER-5-1'], 6: ['PIONEER-6-0', 'MEDIC-6-0'] } };
     const excluded = [operators.find((o) => o.id === 'PIONEER-5-0')!];
-    const result = drawInRunCandidates(operators, pool, ticket('single-PIONEER'), excluded, () => 0);
+    const result = drawInRunCandidates(operators, pool, ticket('single-PIONEER'), excluded, { six: 4, five: 2 }, () => 0);
     expect(result.candidates.map((o) => o.id)).toEqual(['PIONEER-6-0', 'PIONEER-5-1']);
-    expect(result.expectedCount).toBe(5);
+    expect(result.expectedCount).toBe(6);
     expect(result.shortages.map(({ rarity, requested, actual }) => ({ rarity, requested, actual })))
-      .toEqual([{ rarity: 6, requested: 2, actual: 1 }, { rarity: 5, requested: 3, actual: 1 }]);
+      .toEqual([{ rarity: 6, requested: 4, actual: 1 }, { rarity: 5, requested: 2, actual: 1 }]);
     expect(drawInRunCandidates(operators, { pool: {} }, ticket('any'), []).candidates).toEqual([]);
   });
   it('阿米娅多形态共享排除身份，同一轮去重；异格干员分别处理', () => {
@@ -63,11 +75,13 @@ describe('局内招募券抽样', () => {
     const other = operator('other-medic', 'MEDIC', 5);
     const pool = [amiya, guard, caster, other];
     const config = { pool: { 5: pool.map((o) => o.id) } };
-    expect(drawInRunCandidates(pool, config, ticket('single-MEDIC'), [guard], () => 0).candidates).toEqual([other]);
-    const combined = { ...ticket('ranged'), recipes: [{ professions, rarity: 5 as const, count: 8 }] };
-    expect(drawInRunCandidates(pool, config, combined, [], () => 0).candidates).toHaveLength(2);
+    expect(drawInRunCandidates(pool, config, ticket('single-MEDIC'), [guard], { six: 0, five: 8 }, () => 0).candidates).toEqual([other]);
+    expect(drawInRunCandidates(pool, config, ticket('any'), [], { six: 0, five: 8 }, () => 0).candidates).toHaveLength(2);
     expect(operatorIdentity(operator('chen', 'WARRIOR', 6, '陈')))
       .not.toBe(operatorIdentity(operator('chen2', 'SNIPER', 6, '假日威龙陈')));
+  });
+  it.each([{ six: 0, five: 0 }, { six: -1, five: 3 }, { six: 1.5, five: 3 }, { six: 100, five: 2 }])('拒绝无效抽取数量 %o', (counts) => {
+    expect(() => drawInRunCandidates(operators, settings, ticket('any'), [], counts)).toThrow(RangeError);
   });
 });
 
@@ -89,6 +103,25 @@ function setup(initial: ConfirmedStart | null = startWith(operators[0], operator
 }
 
 describe('局内名单与开局连接', () => {
+  it('保存数量只影响下次抽取，保留当前结果、选择和名单；更换招募券也共用新数量', () => {
+    const app = setup();
+    app.drawTicket('single-PIONEER');
+    const previous = app.draw.value;
+    const selected = app.candidates.value[0];
+    app.selectCandidate(selected.id);
+    const members = app.members.value;
+    expect(app.countSettings.updateCounts({ six: 3, five: 1 })).toBe(true);
+    expect(app.draw.value).toBe(previous);
+    expect(app.chosen.value).toEqual(selected);
+    expect(app.members.value).toBe(members);
+    for (const id of ['single-PIONEER', 'guard-vanguard', 'ground', 'any']) {
+      expect(app.drawTicket(id)).toBe(true);
+      expect(app.candidates.value.filter((o) => o.rarity === 6)).toHaveLength(3);
+      expect(app.candidates.value.filter((o) => o.rarity === 5)).toHaveLength(1);
+      expect(app.candidates.value.some((o) => members.some((member) => member.operator.id === o.id))).toBe(false);
+      expect(app.chosen.value).toBeNull();
+    }
+  });
   it('无需确认开局即可登记和抽取，之后确认开局仍保留既有名单与排除状态', () => {
     const app = setup(null);
     expect(app.active.value).toBe(true);
@@ -109,6 +142,7 @@ describe('局内名单与开局连接', () => {
   });
   it('直接抽取不改变随机范围，手动已选六星仍先被排除', () => {
     const app = setup(null);
+    app.countSettings.updateCounts({ six: 2, five: 3 });
     app.config.value.pool = { 6: [operators[0].id, operators[1].id], 5: [operators[9].id] };
     app.addSelected(operators[0].id);
     expect(app.drawTicket('single-PIONEER')).toBe(true);

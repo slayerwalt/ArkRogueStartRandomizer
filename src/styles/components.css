@@ -714,6 +714,13 @@ button.operator-tile.selected:hover {
   .dialog-body {
     padding: 16px;
   }
+  .rarity-tabs {
+    gap: 4px;
+  }
+  .rarity-tabs button {
+    padding-inline: 4px;
+    white-space: nowrap;
+  }
   .rarity-tabs span {
     margin-left: 4px;
   }

@@ -62,6 +62,7 @@ describe('已选六星与所有随机入口', () => {
     expect(app.confirmation.candidateRegistered.value).toBe(true);
     expect(app.candidates.chosen.value?.id).toBe('b');
     expect(app.roster.sixStars.value.map((item) => item.id)).toEqual(['a', 'b']);
+    app.roster.countSettings.updateCounts({ six: 5, five: 1 });
     app.roster.drawTicket('single-CASTER');
     expect(app.roster.candidates.value.map((item) => item.id)).toEqual(['c', 'd', 'five']);
 
@@ -168,6 +169,7 @@ describe('已选六星与所有随机入口', () => {
 
   it('六星全部已选时显示空池，不从范围外补人，全随机仍按希望抽取可用低星', () => {
     const app = setup();
+    app.roster.countSettings.updateCounts({ six: 2, five: 0 });
     const before = JSON.stringify(app.settings.value);
     for (const id of app.settings.value.pool[6]) app.roster.addSelected(id);
     expect(app.candidates.canDraw.value).toBe(false);

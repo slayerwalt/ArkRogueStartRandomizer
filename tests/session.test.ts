@@ -216,11 +216,12 @@ describe('设置持久化边界', () => {
     const scope = effectScope();
     const state = scope.run(() => useRollSettings(data.operators, () => storage))!;
     const six = data.operators.find((o) => o.rarity === 6)!.id;
+    const excludedSix = data.operators.filter((o) => o.rarity === 6 && o.id !== six).map((o) => o.id);
     state.settings.value.pool[6] = [six];
-    expect(JSON.parse(values[SETTINGS_KEY]).pool[6]).toEqual([six]);
+    expect(JSON.parse(values[SETTINGS_KEY]).excluded[6]).toEqual(excludedSix);
     scope.stop();
     const saved = JSON.parse(values[SETTINGS_KEY]);
-    saved.pool[6].push('removed-id');
+    saved.excluded[6].push('removed-id');
     values[SETTINGS_KEY] = JSON.stringify(saved);
     const restoredScope = effectScope();
     const restored = restoredScope.run(() =>
@@ -228,11 +229,17 @@ describe('设置持久化边界', () => {
     )!;
     expect(restored.settings.value.pool[6]).toEqual([six]);
     expect(restored.pruneNotice.value).toContain('1');
-    expect(JSON.parse(values[SETTINGS_KEY]).pool[6]).toEqual([six]);
+    expect(JSON.parse(values[SETTINGS_KEY]).excluded[6]).toEqual(excludedSix);
     restoredScope.stop();
   });
-  it('旧默认迁移后立即保存，新版本重新加载不会重复迁移', () => {
-    const values: Record<string, string> = { [SETTINGS_KEY]: JSON.stringify({ pool: LEGACY_DEFAULT_POOL }) };
+  it.each([{ pool: LEGACY_DEFAULT_POOL }, { version: 2, pool: { 6: [], 5: [], 4: [] } }])
+  ('旧范围重置后立即保存黑名单，再次加载保留新排除且不影响其他设置：%o', (oldSettings) => {
+    const countSettings = '{"version":1,"counts":{"six":7,"five":1}}';
+    const values: Record<string, string> = {
+      [SETTINGS_KEY]: JSON.stringify(oldSettings),
+      'rolllike-recruit-counts': countSettings,
+      'rolllike-usage-guide-seen': '1',
+    };
     const storage: StorageLike = {
       getItem: (key) => values[key] ?? null,
       setItem: (key, value) => { values[key] = value; },
@@ -240,11 +247,35 @@ describe('设置持久化边界', () => {
     const scope = effectScope();
     const state = scope.run(() => useRollSettings(data.operators, () => storage))!;
     expect(state.settings.value).toEqual(createDefaultSettings(data.operators));
-    expect(JSON.parse(values[SETTINGS_KEY]).version).toBe(2);
+    expect(JSON.parse(values[SETTINGS_KEY])).toEqual({ version: 3, excluded: { 6: [], 5: [], 4: [] } });
+    const excluded = state.settings.value.pool[6].shift()!;
+    expect(JSON.parse(values[SETTINGS_KEY]).excluded[6]).toEqual([excluded]);
     scope.stop();
     const restoredScope = effectScope();
     const restored = restoredScope.run(() => useRollSettings(data.operators, () => storage))!;
     expect(restored.settings.value).toEqual(state.settings.value);
+    expect(restored.settings.value.pool[6]).not.toContain(excluded);
+    expect(values['rolllike-recruit-counts']).toBe(countSettings);
+    expect(values['rolllike-usage-guide-seen']).toBe('1');
+    restoredScope.stop();
+  });
+
+  it('重新加载更新后的干员数据时，新增自动参与，原手动排除继续生效', () => {
+    const values: Record<string, string> = {};
+    const storage: StorageLike = {
+      getItem: (key) => values[key] ?? null,
+      setItem: (key, value) => { values[key] = value; },
+    };
+    const scope = effectScope();
+    const state = scope.run(() => useRollSettings(data.operators, () => storage))!;
+    const excluded = state.settings.value.pool[6].shift()!;
+    scope.stop();
+    const added = { ...data.operators.find((o) => o.rarity === 6)!, id: 'new-operator', name: '新增干员' };
+    const restoredScope = effectScope();
+    const restored = restoredScope.run(() => useRollSettings([...data.operators, added], () => storage))!;
+    expect(restored.settings.value.pool[6]).toContain(added.id);
+    expect(restored.settings.value.pool[6]).not.toContain(excluded);
+    expect(restored.pruneNotice.value).toBe('');
     restoredScope.stop();
   });
 });
