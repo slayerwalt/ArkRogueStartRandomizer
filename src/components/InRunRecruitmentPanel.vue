@@ -9,7 +9,8 @@ import OperatorPortrait from './OperatorPortrait.vue';
 import RecruitCountSettingsDialog from './RecruitCountSettingsDialog.vue';
 import type { RecruitCounts } from '../lib/recruit-counts';
 
-const props = defineProps<{ controller: InRunController }>();
+const props = defineProps<{ controller: InRunController; compact?: boolean }>();
+const emit = defineEmits<{ complete: []; reveal: [] }>();
 const { active, draw, candidates, chosen, message,
   drawTicket, selectCandidate, confirmRecruit, discardDraw } = props.controller;
 const { counts, storageNotice, updateCounts } = props.controller.countSettings;
@@ -20,24 +21,31 @@ const ticketPickerOpen = ref(false);
 const drawVersion = ref(0);
 watch(draw, () => { drawVersion.value += 1; }, { flush: 'sync' });
 function focusHeading() {
-  heading.value?.focus();
+  heading.value?.focus({ preventScroll: props.compact });
 }
 async function chooseTicket(id: string) {
   if (!drawTicket(id)) return;
+  await returnToResults();
+}
+async function returnToResults() {
   ticketPickerOpen.value = false;
   await nextTick();
-  candidatesHeading.value?.focus();
+  emit('reveal');
+  candidatesHeading.value?.focus({ preventScroll: props.compact });
 }
 async function confirmSelected() {
   if (!confirmRecruit()) return;
   ticketPickerOpen.value = false;
+  emit('complete');
   await nextTick();
-  focusHeading();
+  if (!props.compact) focusHeading();
 }
 async function discardCurrentDraw() {
   discardDraw();
+  ticketPickerOpen.value = false;
+  emit('complete');
   await nextTick();
-  focusHeading();
+  if (!props.compact) focusHeading();
 }
 function saveCounts(next: RecruitCounts) {
   if (updateCounts(next)) countSettingsOpen.value = false;
@@ -46,26 +54,28 @@ defineExpose({ focusHeading });
 </script>
 
 <template>
-  <section id="in-run-panel" class="feature-section" aria-labelledby="in-run-title" tabindex="-1">
-    <div class="in-run-heading">
+  <section id="in-run-panel" class="feature-section" :class="{ 'in-run-compact': compact }" aria-labelledby="in-run-title" tabindex="-1">
+    <div v-if="!compact" class="in-run-heading">
       <h2 id="in-run-title" ref="heading" class="feature-title in-run-focus-heading" tabindex="-1">随机抽取干员</h2>
       <button v-if="active" class="button secondary count-settings-button" aria-haspopup="dialog" @click="countSettingsOpen = true">
         <AppIcon name="sliders" />数量设置
       </button>
     </div>
+    <h2 v-else id="in-run-title" ref="heading" class="sr-only" tabindex="-1">随机抽取干员</h2>
     <p v-if="!active" class="feature-description">当前肉鸽暂未开放随机抽取干员。</p>
     <template v-else>
-      <p class="feature-description count-summary">{{ draw ? '下次抽取' : '抽取数量' }}：六星 {{ counts.six }} 名 · 五星 {{ counts.five }} 名</p>
-      <p v-if="storageNotice" class="feature-description" role="status">{{ storageNotice }}</p>
-      <div v-if="message" class="run-feedback">
+      <p v-if="!compact" class="feature-description count-summary">{{ draw ? '下次抽取' : '抽取数量' }}：六星 {{ counts.six }} 名 · 五星 {{ counts.five }} 名</p>
+      <p v-if="storageNotice && !compact" class="feature-description" role="status">{{ storageNotice }}</p>
+      <div v-if="message && !compact" class="run-feedback">
         <p class="run-status" role="status" aria-live="polite">{{ message }}</p>
       </div>
-      <div v-if="draw" class="in-run-draw">
-        <div class="feature-subheading in-run-result-heading">
+      <div v-if="draw && (!compact || !ticketPickerOpen)" class="in-run-draw">
+        <div v-if="!compact" class="feature-subheading in-run-result-heading">
           <h3 ref="candidatesHeading" class="in-run-focus-heading" tabindex="-1">可选结果</h3>
           <span class="current-ticket">{{ draw.ticket.name }}招募券</span>
           <span class="in-run-result-count">{{ candidates.length }} 名干员</span>
         </div>
+        <h3 v-else ref="candidatesHeading" class="sr-only" tabindex="-1">可选结果</h3>
         <p v-if="candidates.length < draw.expectedCount" class="inline-warning" role="status">
           {{ candidates.length ? `可选干员不足：当前 ${candidates.length} / ${draw.expectedCount} 名。` : '当前招募券暂无可抽取干员。' }}
         </p>
@@ -78,10 +88,11 @@ defineExpose({ focusHeading });
         </div>
         <div class="in-run-actions" role="group" aria-label="干员抽取操作">
           <button class="button secondary" :aria-expanded="ticketPickerOpen" aria-controls="in-run-tickets"
-            @click="ticketPickerOpen = !ticketPickerOpen">{{ ticketPickerOpen ? '收起招募券' : '更换招募券' }}</button>
-          <button class="button secondary" @click="chooseTicket(draw.ticket.id)">重新抽取</button>
-          <button class="button primary" :disabled="!chosen" @click="confirmSelected">确认招募</button>
-          <button class="text-button in-run-discard" @click="discardCurrentDraw">放弃本次</button>
+            :aria-label="ticketPickerOpen ? '收起招募券' : '更换招募券'"
+            @click="ticketPickerOpen = !ticketPickerOpen">{{ ticketPickerOpen ? '收起招募券' : compact ? '换券' : '更换招募券' }}</button>
+          <button class="button secondary" aria-label="重新抽取" @click="chooseTicket(draw.ticket.id)">{{ compact ? '重抽' : '重新抽取' }}</button>
+          <button class="button primary" aria-label="确认招募" :disabled="!chosen" @click="confirmSelected">{{ compact ? '确认' : '确认招募' }}</button>
+          <button class="text-button in-run-discard" aria-label="放弃本次" @click="discardCurrentDraw">{{ compact ? '放弃' : '放弃本次' }}</button>
         </div>
       </div>
       <div id="in-run-tickets" v-show="!draw || ticketPickerOpen" class="in-run-ticket-picker" :class="{ compact: draw }">
@@ -94,6 +105,7 @@ defineExpose({ focusHeading });
             <span v-if="draw?.ticket.id === ticket.id" class="recruit-ticket-check"><AppIcon name="check" /></span>
           </button>
         </div>
+        <button v-if="compact && draw && ticketPickerOpen" class="text-button ticket-return" @click="returnToResults">返回结果</button>
       </div>
     </template>
     <RecruitCountSettingsDialog v-if="active && countSettingsOpen" :counts="counts" @save="saveCounts" @close="countSettingsOpen = false" />
@@ -103,6 +115,7 @@ defineExpose({ focusHeading });
 <style scoped>
 .in-run-focus-heading { scroll-margin-top: 16px; }
 .in-run-heading { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; }
+.in-run-heading h2 { flex: 1; }
 .in-run-heading .count-settings-button { min-height: 44px; padding: 8px 10px; white-space: nowrap; }
 .count-settings-button .icon { width: 16px; height: 16px; }
 .count-summary { margin-top: 4px; }
@@ -127,6 +140,19 @@ defineExpose({ focusHeading });
 .in-run-discard:hover { color: var(--ink); }
 .run-feedback { display: flex; align-items: center; gap: 8px; min-height: 36px; margin-top: 8px; padding: 2px 10px; background: var(--primary-soft); border-radius: 8px; }
 .run-feedback .run-status { flex: 1; margin: 0; color: var(--ink); overflow-wrap: anywhere; }
+.in-run-compact { margin-top: 0; padding: 8px 10px; border: 0; border-radius: 0; box-shadow: none; }
+.in-run-compact .in-run-draw, .in-run-compact .in-run-ticket-picker { margin-top: 0; }
+.in-run-compact .in-run-ticket-picker.compact { padding: 0; border: 0; }
+.in-run-compact .recruit-ticket-options { grid-template-columns: repeat(8, minmax(0, 1fr)); gap: 6px; }
+.in-run-compact .recruit-ticket-option { min-height: 76px; padding: 4px; gap: 2px; }
+.in-run-compact .recruit-ticket-image { width: 34px; height: 44px; }
+.in-run-compact .recruit-ticket-name { font-size: 12px; }
+.in-run-compact .in-run-candidates { max-height: 208px; margin-block: 0 8px; overflow-y: auto; grid-template-columns: repeat(auto-fill, minmax(70px, 1fr)); }
+.in-run-compact .operator-tile { align-self: start; scroll-margin-block: 8px; }
+.in-run-compact .operator-tile :deep(.portrait-name) { min-height: 0; text-decoration: none; }
+.in-run-compact .in-run-actions { padding-top: 8px; margin-top: 8px; }
+.in-run-compact .in-run-actions > button { min-height: 36px; padding: 5px 12px; font-size: 13px; }
+.ticket-return { min-height: 30px; padding-top: 4px; font-size: 12px; }
 @container (max-width: 420px) {
   .in-run-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }

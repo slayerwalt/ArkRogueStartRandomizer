@@ -1,24 +1,28 @@
 <script setup lang="ts">
-import { onBeforeUnmount, onMounted, ref } from 'vue';
+import { inject, onBeforeUnmount, onMounted, ref, shallowRef } from 'vue';
+import { dialogTargetKey } from '../lib/dialog-target';
 import AppIcon from './AppIcon.vue';
 defineProps<{ title: string; drawer?: boolean }>();
 const emit = defineEmits<{ close: [] }>();
 const dialog = ref<HTMLDialogElement>();
+const target = inject(dialogTargetKey, shallowRef<HTMLElement | null>(null));
+let ownerDocument: Document;
 let previousFocus: HTMLElement | null = null;
 let previousOverflow = '';
 onMounted(() => {
+  ownerDocument = dialog.value?.ownerDocument ?? document;
   previousFocus =
-    document.activeElement instanceof HTMLElement
-      ? document.activeElement
+    typeof (ownerDocument.activeElement as HTMLElement | null)?.focus === 'function'
+      ? ownerDocument.activeElement as HTMLElement
       : null;
-  previousOverflow = document.body.style.overflow;
-  document.body.style.overflow = 'hidden';
+  previousOverflow = ownerDocument.body.style.overflow;
+  ownerDocument.body.style.overflow = 'hidden';
   dialog.value?.showModal();
 });
 onBeforeUnmount(() => {
   dialog.value?.close();
-  document.body.style.overflow = previousOverflow;
-  previousFocus?.focus({ preventScroll: true });
+  if (ownerDocument) ownerDocument.body.style.overflow = previousOverflow;
+  if (previousFocus?.isConnected) previousFocus.focus({ preventScroll: true });
 });
 function backdrop(event: MouseEvent) {
   if (!dialog.value || event.target !== dialog.value) return;
@@ -42,17 +46,17 @@ function trapFocus(event: KeyboardEvent) {
   const first = controls[0];
   const last = controls[controls.length - 1];
   if (!first || !last) return;
-  if (event.shiftKey && document.activeElement === first) {
+  if (event.shiftKey && ownerDocument.activeElement === first) {
     event.preventDefault();
     last.focus();
-  } else if (!event.shiftKey && document.activeElement === last) {
+  } else if (!event.shiftKey && ownerDocument.activeElement === last) {
     event.preventDefault();
     first.focus();
   }
 }
 </script>
 <template>
-  <Teleport to="body">
+  <Teleport :to="target ?? 'body'">
     <dialog
       ref="dialog"
       :class="['dialog', { 'dialog-drawer': drawer }]"

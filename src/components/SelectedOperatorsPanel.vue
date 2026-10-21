@@ -4,6 +4,7 @@ import type { InRunController } from '../composables/useInRunRecruitment';
 import AppIcon from './AppIcon.vue';
 import OperatorRegistration from './OperatorRegistration.vue';
 import RecruitedOperators from './RecruitedOperators.vue';
+import MiniWindowMode from './mini-window/MiniWindowMode.vue';
 
 const props = defineProps<{ controller: InRunController; wideScreen: boolean }>();
 const { sixStars, canUndoRemoval } = props.controller;
@@ -64,7 +65,10 @@ async function undo() {
           <AppIcon name="chevron" :class="{ expanded }" />
         </button>
       </h2>
-      <button ref="addButton" class="button secondary selected-add" aria-haspopup="dialog" @click="adding = true">手动添加</button>
+      <div class="selected-actions">
+        <MiniWindowMode :controller="controller" />
+        <button ref="addButton" class="button secondary selected-add" aria-haspopup="dialog" @click="adding = true">手动添加</button>
+      </div>
     </div>
     <Transition name="section-fold">
       <div :id="contentId" ref="boardContent" v-show="wideScreen || expanded">
@@ -81,7 +85,8 @@ async function undo() {
 </template>
 
 <style scoped>
-.selected-heading { display: flex; align-items: center; gap: 10px; }
+.selected-heading { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
+.selected-actions { display: flex; align-items: center; flex-shrink: 0; gap: 6px; }
 .selected-heading h2 { flex: 1; min-width: 0; }
 .selected-heading .board-caption { margin-left: 0; }
 .selected-add { flex-shrink: 0; padding: 8px; min-height: 44px; font-size: 12px; white-space: nowrap; }

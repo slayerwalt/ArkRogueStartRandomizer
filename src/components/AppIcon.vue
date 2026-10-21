@@ -9,6 +9,7 @@ defineProps<{
     | 'chevron'
     | 'grid'
     | 'help'
+    | 'pip'
     | 'star'
     | 'search';
 }>();
@@ -22,6 +23,7 @@ const paths = {
   chevron: 'm9 5 7 7-7 7',
   grid: 'M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM14 14h6v6h-6z',
   help: 'M9 8a3 3 0 0 1 6 0c0 2-3 2-3 5m0 3v.1',
+  pip: 'M3 4h18v16H3zM12 12h7v6h-7zM6 7l4 4M6 11h4V7',
   star: 'm12 3 2.78 5.63L21 9.54l-4.5 4.39 1.06 6.2L12 17.2l-5.56 2.93 1.06-6.2L3 9.54l6.22-.91Z',
   search: 'm16 16 5 5M18 10a8 8 0 1 1-16 0 8 8 0 0 1 16 0',
 };
