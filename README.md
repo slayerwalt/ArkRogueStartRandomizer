@@ -4,7 +4,7 @@
   <p>《明日方舟》集成战略开局、局内招募与挑战词条随机工具</p>
   <p>随机生成开局，按局内招募券提供可选结果，并从不同来源的词条池抽取随机挑战。</p>
   <p>
-    <a href="https://ark.slayerwalt.cn/"><strong>在线使用</strong></a>
+    <a href="https://slayerwalt.github.io/ArkRogueStartRandomizer/"><strong>在线使用</strong></a>
     ·
     <a href="#本地开发">本地开发</a>
   </p>
